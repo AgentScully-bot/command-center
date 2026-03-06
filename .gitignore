@@ -1,0 +1,28 @@
+node_modules/
+dist/
+*.log
+.env
+
+# Prompts (keep _generic.md)
+prompts/*
+!prompts/_generic.md
+
+# Requirements and memory
+requirements/
+memory/
+
+# Design requests and tasks
+design-requests/
+TASKS.md
+
+# Service file (contains machine-specific paths)
+command-center.service
+
+# Mockup and screenshots (may contain personal data)
+mockup-v2.html
+*.jpg
+*.png
+
+# Project config
+project.json
+tests/
