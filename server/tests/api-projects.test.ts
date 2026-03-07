@@ -123,3 +123,58 @@ describe('GET /api/projects/:id/prompt-status', () => {
     }
   })
 })
+
+describe('GET /api/projects/:id/deploys', () => {
+  it('returns 404 for non-existent project', async () => {
+    const res = await request(app).get('/api/projects/nonexistent-project-xyz/deploys')
+    expect(res.status).toBe(404)
+  })
+
+  it('returns hasDeployScript as boolean', async () => {
+    const res = await request(app).get('/api/projects/command-center/deploys')
+    if (res.status === 200) {
+      expect(res.body).toHaveProperty('hasDeployScript')
+      expect(typeof res.body.hasDeployScript).toBe('boolean')
+    }
+  })
+
+  it('returns required fields in response', async () => {
+    const res = await request(app).get('/api/projects/command-center/deploys')
+    if (res.status === 200) {
+      expect(res.body).toHaveProperty('hasDeployScript')
+      expect(res.body).toHaveProperty('service')
+      expect(res.body).toHaveProperty('lastTest')
+      expect(res.body).toHaveProperty('recentDeploys')
+      expect(Array.isArray(res.body.recentDeploys)).toBe(true)
+    }
+  })
+
+  it('returns lastTest with expected shape when tests/last-run.json exists', async () => {
+    const res = await request(app).get('/api/projects/command-center/deploys')
+    if (res.status === 200 && res.body.lastTest !== null) {
+      const t = res.body.lastTest
+      expect(t).toHaveProperty('timestamp')
+      expect(t).toHaveProperty('passed')
+      expect(t).toHaveProperty('server')
+      expect(t).toHaveProperty('client')
+      expect(t).toHaveProperty('duration')
+    }
+  })
+
+  it('returns recentDeploys items with hash, message, date', async () => {
+    const res = await request(app).get('/api/projects/command-center/deploys')
+    if (res.status === 200 && res.body.recentDeploys.length > 0) {
+      const commit = res.body.recentDeploys[0]
+      expect(commit).toHaveProperty('hash')
+      expect(commit).toHaveProperty('message')
+      expect(commit).toHaveProperty('date')
+    }
+  })
+
+  it('includes backward-compat status field', async () => {
+    const res = await request(app).get('/api/projects/command-center/deploys')
+    if (res.status === 200) {
+      expect(res.body).toHaveProperty('status')
+    }
+  })
+})

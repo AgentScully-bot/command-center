@@ -827,18 +827,90 @@ projectDetailRouter.get("/:id/deploys", async (req, res) => {
   const { id } = req.params;
   if (!sanitizeId(id)) { res.status(400).json({ error: "Invalid project id" }); return; }
 
+  const projDir = path.join(PROJECTS_DIR, id);
+  try {
+    await fs.access(projDir);
+  } catch {
+    return res.status(404).json({ error: "Project not found" });
+  }
+
+  const result: any = {
+    hasDeployScript: false,
+    service: null,
+    lastTest: null,
+    recentDeploys: [],
+    // Backward-compat fields for header panel
+    status: "unknown",
+    deployedAt: null,
+    relativeTime: null,
+  };
+
+  // Backward-compat: read deploy-log.json
   const logPath = path.join(HOME, "deployments", id, "deploy-log.json");
   try {
     const content = await fs.readFile(logPath, "utf-8");
     const log = JSON.parse(content) as { status: string; deployedAt: string };
-    res.json({
-      status: log.status,
-      deployedAt: log.deployedAt || null,
-      relativeTime: log.deployedAt ? relativeTime(log.deployedAt) : null,
-    });
+    result.status = log.status;
+    result.deployedAt = log.deployedAt || null;
+    result.relativeTime = log.deployedAt ? relativeTime(log.deployedAt) : null;
+  } catch { /* no deploy log yet */ }
+
+  // Check for deploy.sh
+  const deployScript = path.join(projDir, "deploy.sh");
+  try {
+    await fs.access(deployScript);
+    result.hasDeployScript = true;
   } catch {
-    res.json({ status: "unknown", deployedAt: null, relativeTime: null });
+    return res.json(result);
   }
+
+  // Read tests/last-run.json
+  const lastRunPath = path.join(projDir, "tests", "last-run.json");
+  try {
+    const raw = await fs.readFile(lastRunPath, "utf-8");
+    result.lastTest = JSON.parse(raw);
+  } catch { /* no test results yet */ }
+
+  // Check systemd service status (convention: service name = project id)
+  try {
+    const active = (await run("systemctl", ["--user", "is-active", id])).trim();
+    let since = "";
+    try {
+      since = (await run("systemctl", ["--user", "show", id, "--property=ActiveEnterTimestamp", "--value"])).trim();
+    } catch { /* ignore */ }
+    result.service = { active: active === "active", since };
+  } catch {
+    // is-active exits non-zero when inactive — check if unit file exists at all
+    try {
+      await run("systemctl", ["--user", "cat", id]);
+      result.service = { active: false, since: "" };
+    } catch {
+      // No service defined
+      result.service = null;
+    }
+  }
+
+  // Get deploy-related git commits
+  try {
+    const log = (await run("git", ["-C", projDir, "log", "--all", "--oneline", "--format=%H|%s|%ai", "-20"])).trim();
+    if (log) {
+      const allCommits = log.split("\n").map((line: string) => {
+        const [hash, ...rest] = line.split("|");
+        const date = rest.pop() || "";
+        const message = rest.join("|");
+        return { hash: hash.substring(0, 7), message, date };
+      });
+      result.recentDeploys = allCommits
+        .filter((c: any) => /deploy|release|build|version/i.test(c.message))
+        .slice(0, 5);
+      // If no deploy-specific commits, show last 3 as general reference
+      if (result.recentDeploys.length === 0) {
+        result.recentDeploys = allCommits.slice(0, 3);
+      }
+    }
+  } catch { /* not a git repo or git error */ }
+
+  res.json(result);
 });
 
 // --- GET /api/projects/:id/prompt-status ---

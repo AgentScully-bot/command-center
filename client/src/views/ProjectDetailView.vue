@@ -8,6 +8,7 @@ import ProjectWaitingPanel from '../components/ProjectWaitingPanel.vue'
 import DecisionsPanel from '../components/DecisionsPanel.vue'
 import ProjectActivityPanel from '../components/ProjectActivityPanel.vue'
 import ProjectGitPanel from '../components/ProjectGitPanel.vue'
+import ProjectDeploymentsPanel from '../components/ProjectDeploymentsPanel.vue'
 import { useApi } from '../composables/useApi'
 
 const route = useRoute()
@@ -111,6 +112,7 @@ const sideTabs = [
   { key: 'decisions', label: 'Decisions' },
   { key: 'activity', label: 'Activity' },
   { key: 'git', label: 'Git' },
+  { key: 'deploys', label: 'Deploys' },
 ]
 
 async function deploy() {
@@ -215,6 +217,7 @@ async function deploy() {
           <DecisionsPanel v-show="activeSideTab === 'decisions'" class="side-panel" :decisions="project.decisions || []" />
           <ProjectActivityPanel v-show="activeSideTab === 'activity'" class="side-panel" :activity="activity || []" />
           <ProjectGitPanel v-show="activeSideTab === 'git'" class="side-panel" :git="git as any" />
+          <ProjectDeploymentsPanel v-show="activeSideTab === 'deploys'" class="side-panel" :deploys="deployInfo as any" />
         </div>
       </div>
     </div>
