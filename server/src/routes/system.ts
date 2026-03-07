@@ -5,7 +5,7 @@ export const systemRouter = Router();
 
 systemRouter.get("/", async (_req, res) => {
   try {
-    const text = await run("openclaw", ["status"], 8000).catch(() => "");
+    const text = await run("openclaw", ["status"], 5000).catch(() => "");
 
     // Gateway service: look for "running" in Gateway service line
     const gatewayRunning = text.includes("running");

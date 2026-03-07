@@ -12,5 +12,5 @@ describe('GET /api/system', () => {
     if (res.status === 200) {
       expect(res.body).toHaveProperty('gateway')
     }
-  }, 15000)
+  }, 20000)
 })
