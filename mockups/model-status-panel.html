@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Model Status Panel — Mockup</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { 
+    background: #0f1117; 
+    color: #e0e0e0; 
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+  h2 { font-size: 14px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+
+  /* === MODEL STATUS CARD (TopBar integration) === */
+  .topbar {
+    background: #1a1d27;
+    border-radius: 12px;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    border: 1px solid #2a2d3a;
+  }
+  .topbar-label { color: #888; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .model-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .model-badge .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  /* Primary — green */
+  .model-badge.primary { background: rgba(34, 197, 94, 0.12); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.25); }
+  .model-badge.primary .dot { background: #22c55e; }
+  /* Fallback level 1-2 — orange */
+  .model-badge.fallback-low { background: rgba(251, 146, 60, 0.12); color: #fb923c; border: 1px solid rgba(251, 146, 60, 0.25); }
+  .model-badge.fallback-low .dot { background: #fb923c; }
+  /* Fallback level 3+ — red */
+  .model-badge.fallback-high { background: rgba(239, 68, 68, 0.12); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.25); }
+  .model-badge.fallback-high .dot { background: #ef4444; }
+  /* Cooldown timer */
+  .cooldown-tag {
+    font-size: 11px;
+    color: #fb923c;
+    background: rgba(251, 146, 60, 0.1);
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 500;
+  }
+
+  /* === FULL MODEL STATUS PANEL === */
+  .panel {
+    background: #1a1d27;
+    border-radius: 12px;
+    padding: 20px;
+    border: 1px solid #2a2d3a;
+  }
+  .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  .panel-title {
+    font-size: 16px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .alert-count {
+    background: #ef4444;
+    color: white;
+    font-size: 11px;
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-weight: 700;
+  }
+
+  /* Current model section */
+  .current-model {
+    background: #12141c;
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .current-model .left { display: flex; align-items: center; gap: 12px; }
+  .current-model .model-name { font-size: 18px; font-weight: 700; }
+  .current-model .provider { font-size: 12px; color: #666; margin-top: 2px; }
+  .current-model .right { text-align: right; }
+  .current-model .status-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .current-model .since { font-size: 12px; color: #666; margin-top: 2px; }
+
+  /* Fallback chain */
+  .chain {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .chain-item {
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid #2a2d3a;
+    color: #666;
+    background: #12141c;
+    position: relative;
+  }
+  .chain-item.active {
+    border-color: #22c55e;
+    color: #22c55e;
+    background: rgba(34, 197, 94, 0.08);
+  }
+  .chain-item.fallback-active {
+    border-color: #fb923c;
+    color: #fb923c;
+    background: rgba(251, 146, 60, 0.08);
+  }
+  .chain-item.cooldown {
+    border-color: #ef4444;
+    color: #ef4444;
+    opacity: 0.6;
+    text-decoration: line-through;
+  }
+  .chain-arrow { color: #333; font-size: 14px; }
+
+  /* Fallback history timeline */
+  .history-section { margin-top: 16px; }
+  .history-title { font-size: 13px; color: #888; margin-bottom: 10px; font-weight: 600; }
+  .timeline { display: flex; flex-direction: column; gap: 8px; }
+  .timeline-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: #12141c;
+    font-size: 13px;
+  }
+  .timeline-time { color: #666; font-size: 12px; min-width: 60px; font-family: monospace; }
+  .timeline-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .timeline-dot.green { background: #22c55e; }
+  .timeline-dot.orange { background: #fb923c; }
+  .timeline-dot.red { background: #ef4444; }
+  .timeline-model { font-weight: 600; }
+  .timeline-reason { color: #666; font-size: 12px; margin-left: auto; }
+  .timeline-duration { color: #888; font-size: 11px; background: #1a1d27; padding: 2px 6px; border-radius: 4px; }
+
+  /* Stats row */
+  .stats-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 16px;
+  }
+  .stat-card {
+    flex: 1;
+    background: #12141c;
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+  }
+  .stat-value { font-size: 20px; font-weight: 700; }
+  .stat-label { font-size: 11px; color: #666; margin-top: 4px; text-transform: uppercase; }
+  .stat-value.green { color: #22c55e; }
+  .stat-value.orange { color: #fb923c; }
+  .stat-value.red { color: #ef4444; }
+
+  /* Error alert bar */
+  .alert-bar {
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    border-radius: 8px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: #ef4444;
+    margin-bottom: 16px;
+  }
+  .alert-bar .icon { font-size: 16px; }
+
+  /* Section labels */
+  .section-label {
+    font-size: 11px;
+    color: #555;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+    margin-top: 4px;
+  }
+
+  .divider { border: none; border-top: 1px solid #222; margin: 16px 0; }
+
+  /* === SCENARIO SECTIONS === */
+  .scenario {
+    border: 1px dashed #333;
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .scenario-title {
+    font-size: 13px;
+    color: #fb923c;
+    font-weight: 600;
+    margin-bottom: 16px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ========================================= -->
+<!-- SCENARIO 1: Everything normal (primary)   -->
+<!-- ========================================= -->
+<div class="scenario">
+  <div class="scenario-title">📟 Scenario 1 — Normal Operation (Primary Model)</div>
+
+  <h2>TopBar Integration</h2>
+  <div class="topbar">
+    <span class="topbar-label">Model</span>
+    <span class="model-badge primary">
+      <span class="dot"></span>
+      Opus
+    </span>
+    <span style="color: #444; font-size: 12px;">anthropic/claude-opus-4-6</span>
+  </div>
+</div>
+
+<!-- ========================================= -->
+<!-- SCENARIO 2: In fallback (orange)          -->
+<!-- ========================================= -->
+<div class="scenario">
+  <div class="scenario-title">⚠️ Scenario 2 — Fallback Active (Rate Limited)</div>
+
+  <h2>TopBar Integration</h2>
+  <div class="topbar">
+    <span class="topbar-label">Model</span>
+    <span class="model-badge fallback-low">
+      <span class="dot"></span>
+      Sonnet (fallback #1)
+    </span>
+    <span class="cooldown-tag">Opus cooldown: 4m 12s</span>
+  </div>
+</div>
+
+<!-- ========================================= -->
+<!-- SCENARIO 3: Deep fallback (red)           -->
+<!-- ========================================= -->
+<div class="scenario">
+  <div class="scenario-title">🔴 Scenario 3 — Deep Fallback (Multiple Failures)</div>
+
+  <h2>TopBar Integration</h2>
+  <div class="topbar">
+    <span class="topbar-label">Model</span>
+    <span class="model-badge fallback-high">
+      <span class="dot"></span>
+      GPT-4.1 (fallback #4)
+    </span>
+    <span class="cooldown-tag">3 models in cooldown</span>
+  </div>
+</div>
+
+<!-- ========================================= -->
+<!-- FULL PANEL                                -->
+<!-- ========================================= -->
+<div class="scenario">
+  <div class="scenario-title">📊 Full Model Status Panel (Dashboard Card)</div>
+
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title">
+        🤖 Model Status
+        <span class="alert-count">2</span>
+      </div>
+    </div>
+
+    <!-- Alert bar -->
+    <div class="alert-bar">
+      <span class="icon">⚠️</span>
+      <span>Running on <strong>fallback #1</strong> — Opus rate-limited since 6:18 PM (cooldown: 4m remaining)</span>
+    </div>
+
+    <!-- Current model -->
+    <div class="section-label">Active Model</div>
+    <div class="current-model">
+      <div class="left">
+        <span class="model-badge fallback-low" style="font-size: 16px; padding: 8px 16px;">
+          <span class="dot"></span>
+          Sonnet
+        </span>
+        <div>
+          <div class="model-name" style="font-size: 14px;">anthropic/claude-sonnet-4-6</div>
+          <div class="provider">Fallback #1 · Active since 6:18 PM</div>
+        </div>
+      </div>
+      <div class="right">
+        <div class="status-label" style="color: #fb923c;">⚡ FALLBACK</div>
+        <div class="since">3 requests served</div>
+      </div>
+    </div>
+
+    <!-- Fallback chain visualization -->
+    <div class="section-label">Fallback Chain</div>
+    <div class="chain">
+      <span class="chain-item cooldown">Opus <span style="font-size:10px">⏱ 4m</span></span>
+      <span class="chain-arrow">→</span>
+      <span class="chain-item fallback-active">Sonnet ✓</span>
+      <span class="chain-arrow">→</span>
+      <span class="chain-item">Kimi K2.5</span>
+      <span class="chain-arrow">→</span>
+      <span class="chain-item">DeepSeek</span>
+      <span class="chain-arrow">→</span>
+      <span class="chain-item">GPT-4.1</span>
+      <span class="chain-arrow">→</span>
+      <span class="chain-item">Haiku</span>
+    </div>
+
+    <hr class="divider">
+
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-value green">121</div>
+        <div class="stat-label">Primary Requests</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value orange">20</div>
+        <div class="stat-label">Fallback Requests</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value red">3</div>
+        <div class="stat-label">Cooldown Events</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" style="color: #60a5fa;">86%</div>
+        <div class="stat-label">Primary Uptime</div>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <!-- Fallback history timeline -->
+    <div class="history-section">
+      <div class="history-title">Recent Model Switches (Today)</div>
+      <div class="timeline">
+        <div class="timeline-item">
+          <span class="timeline-time">6:18p</span>
+          <span class="timeline-dot orange"></span>
+          <span class="timeline-model" style="color: #fb923c;">→ Sonnet</span>
+          <span class="timeline-reason">Opus rate-limited (429)</span>
+        </div>
+        <div class="timeline-item">
+          <span class="timeline-time">5:42p</span>
+          <span class="timeline-dot green"></span>
+          <span class="timeline-model" style="color: #22c55e;">→ Opus</span>
+          <span class="timeline-reason">Cooldown expired</span>
+          <span class="timeline-duration">on primary 36m</span>
+        </div>
+        <div class="timeline-item">
+          <span class="timeline-time">5:01p</span>
+          <span class="timeline-dot orange"></span>
+          <span class="timeline-model" style="color: #fb923c;">→ Haiku</span>
+          <span class="timeline-reason">Opus rate-limited (429)</span>
+          <span class="timeline-duration">fallback 41m</span>
+        </div>
+        <div class="timeline-item">
+          <span class="timeline-time">2:15p</span>
+          <span class="timeline-dot green"></span>
+          <span class="timeline-model" style="color: #22c55e;">→ Opus</span>
+          <span class="timeline-reason">Cooldown expired</span>
+          <span class="timeline-duration">on primary 2h 46m</span>
+        </div>
+        <div class="timeline-item">
+          <span class="timeline-time">1:50p</span>
+          <span class="timeline-dot red"></span>
+          <span class="timeline-model" style="color: #ef4444;">→ GPT-4.1</span>
+          <span class="timeline-reason">Opus + Sonnet rate-limited</span>
+          <span class="timeline-duration">fallback 25m</span>
+        </div>
+        <div class="timeline-item">
+          <span class="timeline-time">8:25a</span>
+          <span class="timeline-dot orange"></span>
+          <span class="timeline-model" style="color: #fb923c;">→ Sonnet</span>
+          <span class="timeline-reason">Opus rate-limited (429) · triggered by heartbeat</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

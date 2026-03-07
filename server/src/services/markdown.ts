@@ -47,9 +47,11 @@ export async function parseTasksFile(filePath: string): Promise<TaskCounts> {
     if (taskMatch && section) {
       const done = taskMatch[1] === "x";
       const text = taskMatch[2].trim();
-      const waitingMatch = text.match(/\[waiting:(\w+)\]/);
+      // Only match [waiting:X] as a standalone tag (at end of line or surrounded by whitespace)
+      // Avoid false positives from descriptive text mentioning waiting tags
+      const waitingMatch = text.match(/\[waiting:(\w+)\]\s*$/);
       items.push({
-        text: text.replace(/\s*\[waiting:\w+\]\s*/g, "").trim(),
+        text: text.replace(/\s*\[waiting:\w+\]\s*$/g, "").trim(),
         section,
         done,
         waiting: waitingMatch ? waitingMatch[1] : null,

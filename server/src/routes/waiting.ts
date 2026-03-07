@@ -50,13 +50,16 @@ interface WaitingGroup {
   items: WaitingItem[];
 }
 
-async function getFileMtime(filePath: string): Promise<Date> {
-  try {
-    const stat = await fs.stat(filePath);
-    return stat.mtime;
-  } catch {
-    return new Date();
+function parseTaskAge(text: string): number {
+  // Parse date from task text like "Task description (2026-03-04)" or "(2026-03-04)"
+  const dateMatch = text.match(/\((\d{4}-\d{2}-\d{2})\)/);
+  if (dateMatch) {
+    const taskDate = new Date(dateMatch[1]);
+    if (!isNaN(taskDate.getTime())) {
+      return Math.floor((Date.now() - taskDate.getTime()) / (1000 * 60 * 60 * 24));
+    }
   }
+  return 0; // No date found — treat as new
 }
 
 async function getWaitingGroups(): Promise<WaitingGroup[]> {
@@ -72,16 +75,14 @@ async function getWaitingGroups(): Promise<WaitingGroup[]> {
 
     const tasksPath = path.join(PROJECTS_DIR, entry.name, "TASKS.md");
     const tasks = await parseTasksFile(tasksPath);
-    const mtime = await getFileMtime(tasksPath);
-    const ageDays = Math.floor((now - mtime.getTime()) / (1000 * 60 * 60 * 24));
 
-    // Count all waiting items in this project (for impact calculation)
-    const allItems = tasks.items;
-    const blockedCount = allItems.filter(i => i.section === "blocked").length;
+    // Filter out Done section items and checked [x] items
+    const activeItems = tasks.items.filter(i => i.section !== "done" && !i.done);
+    const blockedCount = activeItems.filter(i => i.section === "blocked").length;
 
     const items: WaitingItem[] = [];
 
-    for (const item of allItems) {
+    for (const item of activeItems) {
       if (!item.waiting) continue;
 
       const key = snoozeKey(entry.name, item.text);
@@ -89,6 +90,9 @@ async function getWaitingGroups(): Promise<WaitingGroup[]> {
 
       // Impact: count of blocked tasks in same project
       const impact = blockedCount;
+
+      // Parse age from date in task text instead of file mtime
+      const ageDays = parseTaskAge(item.text);
 
       items.push({
         text: item.text,

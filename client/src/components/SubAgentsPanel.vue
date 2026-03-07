@@ -165,6 +165,7 @@ async function killAgent(sessionKey: string) {
 .agent-item:last-child { border-bottom: none; }
 .agent-item.dimmed { opacity: 0.6; }
 .agent-item.dimmed:hover { opacity: 0.85; }
+.agent-item.dimmed .agent-task { color: var(--text-secondary); }
 
 .agent-pulse { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .agent-pulse.running { background: var(--green); animation: pulse 2s infinite; }
@@ -173,7 +174,7 @@ async function killAgent(sessionKey: string) {
 @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
 
 .agent-info-col { flex: 1; min-width: 0; }
-.agent-task { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.agent-task { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--accent); }
 .agent-detail { font-size: 10px; color: var(--text-muted); margin-top: 2px; display: flex; align-items: center; gap: 4px; }
 .sep { opacity: 0.5; }
 
