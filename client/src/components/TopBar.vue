@@ -202,6 +202,16 @@ function historyModelColor(item: HistoryItem): string {
     <!-- Title -->
     <span class="topbar-title">Command Center</span>
 
+    <!-- Mobile compact indicators -->
+    <div class="mobile-indicators">
+      <span class="mi-dot" :class="system?.gatewayService === 'running' ? 'ok' : 'err'" title="Gateway"></span>
+      <span class="mi-dot" :class="wsConnected ? 'ok' : 'warn'" title="WebSocket"></span>
+      <button class="mobile-model-badge" :class="badgeClass">
+        <span class="pulse-dot"></span>
+        <span class="badge-text">{{ activeAlias }}</span>
+      </button>
+    </div>
+
     <!-- Health group -->
     <div class="pill-group desktop-only">
       <span class="status-pill">
@@ -321,10 +331,27 @@ function historyModelColor(item: HistoryItem): string {
     <div class="topbar-spacer"></div>
     <button class="btn desktop-only" @click="$emit('refresh')">↺ Refresh</button>
 
-    <!-- Mobile -->
-    <span class="mobile-status-dot" :class="system?.gatewayService === 'running' ? 'ok' : 'err'"></span>
     <button class="btn mobile-settings-btn" @click="$emit('refresh')">⚙</button>
   </header>
+
+  <!-- Mobile stats strip -->
+  <div class="mobile-stats-strip">
+    <span class="ms-pill">↑ <span class="ms-val">{{ statsData?.uptime || '—' }}</span></span>
+    <span class="ms-pill">Sessions <span class="ms-val">{{ statsData?.sessionsToday ?? '—' }}</span></span>
+    <span class="ms-pill">
+      <span class="ms-val">{{ formatCost(statsData?.costToday) }}</span>
+      <span class="ms-sep">·</span>
+      <span class="ms-val muted">{{ formatCost(statsData?.costMonth) }}/mo</span>
+    </span>
+    <span class="ms-pill">
+      <span class="ms-val">{{ formatTokens(statsData?.tokensIn) }}in</span>
+      <span class="ms-sep">/</span>
+      <span class="ms-val">{{ formatTokens(statsData?.tokensOut) }} out</span>
+    </span>
+    <span class="ms-pill">
+      Errors <span class="ms-val" :class="{ red: errorCount > 0, green: errorCount === 0 }">{{ errorCount }}</span>
+    </span>
+  </div>
 </template>
 
 <style scoped>
@@ -631,25 +658,100 @@ function historyModelColor(item: HistoryItem): string {
 .topbar-spacer { flex: 1; }
 
 /* Mobile */
-.mobile-status-dot { display: none; }
+.mobile-indicators { display: none; }
 .mobile-settings-btn { display: none; }
+.mobile-stats-strip { display: none; }
 
 @media (max-width: 768px) {
   .topbar { padding: 8px 16px; }
   .desktop-only { display: none !important; }
-  .mobile-status-dot {
-    display: block;
-    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  .topbar-title { font-size: 20px; font-weight: 700; }
+
+  .mobile-indicators {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: 8px;
   }
-  .mobile-status-dot.ok { background: var(--green); }
-  .mobile-status-dot.err { background: var(--red); }
+  .mi-dot {
+    width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+  }
+  .mi-dot.ok   { background: var(--green); }
+  .mi-dot.warn { background: var(--yellow); }
+  .mi-dot.err  { background: var(--red); }
+  .mobile-model-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 5px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: default;
+    border: 1px solid transparent;
+    background: none;
+    font-family: inherit;
+    max-width: 100px;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+  .mobile-model-badge .badge-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .mobile-model-badge .pulse-dot { width: 5px; height: 5px; }
+  .mobile-model-badge.primary { background: rgba(34, 197, 94, 0.1); color: #22c55e; border-color: rgba(34, 197, 94, 0.2); }
+  .mobile-model-badge.fallback-low { background: rgba(251, 146, 60, 0.1); color: #fb923c; border-color: rgba(251, 146, 60, 0.2); }
+  .mobile-model-badge.fallback-high { background: rgba(239, 68, 68, 0.1); color: #ef4444; border-color: rgba(239, 68, 68, 0.2); }
+  .mobile-model-badge.primary .pulse-dot { background: #22c55e; }
+  .mobile-model-badge.fallback-low .pulse-dot { background: #fb923c; }
+  .mobile-model-badge.fallback-high .pulse-dot { background: #ef4444; }
+
   .mobile-settings-btn {
     display: flex;
     width: 32px; height: 32px; border-radius: 50%; background: var(--bg-tertiary);
     align-items: center; justify-content: center; font-size: 14px;
     color: var(--text-secondary); border: none; padding: 0; cursor: pointer;
   }
-  .topbar-title { font-size: 20px; font-weight: 700; }
+
+  .mobile-stats-strip {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 16px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    scroll-snap-type: x proximity;
+    position: sticky;
+    top: 48px;
+    z-index: 99;
+  }
+  .mobile-stats-strip::-webkit-scrollbar { display: none; }
+
+  .ms-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 3px 7px;
+    border-radius: 4px;
+    font-size: 11px;
+    color: #666;
+    white-space: nowrap;
+    flex-shrink: 0;
+    scroll-snap-align: start;
+  }
+  .ms-val {
+    font-weight: 600;
+    font-size: 11px;
+    color: #aaa;
+  }
+  .ms-val.red   { color: var(--red); }
+  .ms-val.green { color: var(--green); }
+  .ms-val.muted { color: #555; }
+  .ms-sep { color: #333; margin: 0 1px; }
 }
 @media (min-width: 769px) {
   .topbar-title { font-size: 14px; }
