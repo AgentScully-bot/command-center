@@ -13,6 +13,7 @@
   "dependencies": {
     "express": "^4.21.0",
     "glob": "^11.0.0",
+    "json5": "^2.2.3",
     "ws": "^8.19.0"
   },
   "devDependencies": {

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import fs from "fs/promises";
 import path from "path";
+import JSON5 from "json5";
 import { HOME } from "../services/paths.js";
 
 export const modelStatusRouter = Router();
@@ -126,7 +127,8 @@ modelStatusRouter.get("/", async (_req, res) => {
     let aliases: Record<string, AliasEntry> = {};
 
     try {
-      const config = JSON.parse(await fs.readFile(configPath, "utf-8"));
+      const raw = await fs.readFile(configPath, "utf-8");
+      const config = JSON5.parse(raw);
       const defaults = config?.agents?.defaults || {};
       primaryModel = defaults.model?.primary || "";
       fallbackKeys = defaults.model?.fallbacks || [];
