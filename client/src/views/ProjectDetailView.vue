@@ -105,13 +105,13 @@ async function approveFeature(feature: string) {
   refresh()
 }
 
-const activeSideTab = ref('agents')
+const activeSideTab = ref('waiting')
 const sideTabs = [
-  { key: 'agents', label: 'Agents' },
   { key: 'waiting', label: 'Waiting' },
+  { key: 'agents', label: 'Agents' },
+  { key: 'git', label: 'Git' },
   { key: 'decisions', label: 'Decisions' },
   { key: 'activity', label: 'Activity' },
-  { key: 'git', label: 'Git' },
   { key: 'deploys', label: 'Deploys' },
 ]
 
@@ -212,11 +212,11 @@ async function deploy() {
           </div>
 
           <!-- Desktop: show all, Mobile: show selected -->
-          <ProjectAgentsPanel v-show="activeSideTab === 'agents'" class="side-panel" :agents="projectAgents" />
           <ProjectWaitingPanel v-show="activeSideTab === 'waiting'" class="side-panel" :items="waitingItems" />
+          <ProjectAgentsPanel v-show="activeSideTab === 'agents'" class="side-panel" :agents="projectAgents" />
+          <ProjectGitPanel v-show="activeSideTab === 'git'" class="side-panel" :git="git as any" />
           <DecisionsPanel v-show="activeSideTab === 'decisions'" class="side-panel" :decisions="project.decisions || []" />
           <ProjectActivityPanel v-show="activeSideTab === 'activity'" class="side-panel" :activity="activity || []" />
-          <ProjectGitPanel v-show="activeSideTab === 'git'" class="side-panel" :git="git as any" />
           <ProjectDeploymentsPanel v-show="activeSideTab === 'deploys'" class="side-panel" :deploys="deployInfo as any" />
         </div>
       </div>

@@ -3,7 +3,7 @@ import { computed } from 'vue'
 
 const props = defineProps<{ agents: any[] }>()
 
-const HISTORY_LIMIT = 8
+const HISTORY_LIMIT = 2
 
 const active = computed(() => props.agents.filter((a: any) => a.status === 'running'))
 const history = computed(() => {
