@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TopBar Consolidated — Mockup</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0f1117;
+    color: #e0e0e0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
+  /* ═══════════════════════════════════════
+     NEW CONSOLIDATED TOPBAR
+  ═══════════════════════════════════════ */
+  .topbar {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    padding: 0 20px;
+    height: 48px;
+    background: #13151e;
+    border-bottom: 1px solid #1e2130;
+    position: sticky; top: 0; z-index: 100;
+    gap: 4px;
+  }
+
+  /* Title */
+  .topbar-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    white-space: nowrap;
+    padding-right: 16px;
+    border-right: 1px solid #1e2130;
+    margin-right: 12px;
+  }
+
+  /* ── Status pill group ── */
+  .status-group {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding-right: 12px;
+    border-right: 1px solid #1e2130;
+    margin-right: 8px;
+  }
+  .status-group:last-of-type {
+    border-right: none;
+    margin-right: 0;
+  }
+
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 9px;
+    border-radius: 5px;
+    font-size: 12px;
+    color: #888;
+    cursor: default;
+    border: 1px solid transparent;
+    transition: background 0.15s;
+    white-space: nowrap;
+  }
+  .status-pill:hover { background: #1a1d27; }
+  .status-pill.clickable { cursor: pointer; }
+
+  /* status dots */
+  .dot {
+    width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+  }
+  .dot.ok   { background: #22c55e; }
+  .dot.warn { background: #eab308; }
+  .dot.err  { background: #ef4444; }
+
+  /* restart mini-button */
+  .restart-btn {
+    font-size: 10px; padding: 1px 5px;
+    border-radius: 3px;
+    border: 1px solid #2a2d3a;
+    background: none;
+    color: #555;
+    cursor: pointer;
+    margin-left: 2px;
+  }
+  .restart-btn:hover { border-color: #eab308; color: #eab308; }
+
+  /* ── Stat pills (cost, sessions, tokens, errors) ── */
+  .stat-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 9px;
+    border-radius: 5px;
+    font-size: 12px;
+    color: #666;
+    white-space: nowrap;
+  }
+  .stat-pill .stat-val {
+    font-weight: 600;
+    font-size: 12px;
+    color: #aaa;
+  }
+  .stat-pill .stat-val.red   { color: #ef4444; }
+  .stat-pill .stat-val.green { color: #22c55e; }
+
+  /* ── Model status badge (special) ── */
+  .model-badge-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 5px 11px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: opacity 0.15s;
+    position: relative;
+  }
+  .model-badge-btn:hover { opacity: 0.85; }
+  .model-badge-btn.primary {
+    background: rgba(34, 197, 94, 0.1);
+    color: #22c55e;
+    border-color: rgba(34, 197, 94, 0.2);
+  }
+  .model-badge-btn.fallback-low {
+    background: rgba(251, 146, 60, 0.1);
+    color: #fb923c;
+    border-color: rgba(251, 146, 60, 0.2);
+  }
+  .model-badge-btn.fallback-high {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    border-color: rgba(239, 68, 68, 0.2);
+  }
+  .pulse-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+  .model-badge-btn.primary .pulse-dot    { background: #22c55e; }
+  .model-badge-btn.fallback-low .pulse-dot  { background: #fb923c; }
+  .model-badge-btn.fallback-high .pulse-dot { background: #ef4444; }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .badge-chevron {
+    font-size: 9px; opacity: 0.6; margin-left: 1px;
+    transition: transform 0.2s;
+  }
+  .badge-chevron.open { transform: rotate(180deg); }
+
+  /* cooldown inline */
+  .cooldown-inline {
+    font-size: 11px;
+    color: #fb923c;
+    background: rgba(251, 146, 60, 0.08);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 400;
+  }
+
+  /* spacer */
+  .topbar-spacer { flex: 1; }
+
+  /* ── Refresh button ── */
+  .topbar-refresh {
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 5px;
+    border: 1px solid #2a2d3a;
+    background: none;
+    color: #555;
+    cursor: pointer;
+  }
+  .topbar-refresh:hover { border-color: #444; color: #aaa; }
+
+  /* ═══════════════════════════════════════
+     MODEL STATUS DROPDOWN PANEL
+  ═══════════════════════════════════════ */
+  .model-dropdown {
+    position: absolute;
+    top: 48px;
+    right: 0;
+    left: 0;
+    margin: 0 auto;
+    width: 480px;
+    background: #1a1d27;
+    border: 1px solid #2a2d3a;
+    border-top: none;
+    border-radius: 0 0 12px 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    z-index: 99;
+    padding: 16px 20px;
+
+    /* position it relative to badge */
+    position: absolute;
+    top: 100%;
+    right: 20px;
+    margin-top: 4px;
+    border-radius: 10px;
+    border-top: 1px solid #2a2d3a;
+  }
+  .dropdown-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  /* Alert bar inside dropdown */
+  .alert-bar {
+    border-radius: 7px; padding: 7px 11px;
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; margin-bottom: 12px;
+  }
+  .alert-bar.alert-low {
+    background: rgba(251, 146, 60, 0.08);
+    border: 1px solid rgba(251, 146, 60, 0.2);
+    color: #fb923c;
+  }
+
+  /* Active row in dropdown */
+  .dropdown-active-row {
+    display: flex; align-items: center; gap: 8px;
+    background: #12141c; border-radius: 7px;
+    padding: 8px 11px; margin-bottom: 10px;
+  }
+  .dr-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 9px; border-radius: 5px;
+    font-size: 12px; font-weight: 600;
+  }
+  .dr-badge.primary { background: rgba(34, 197, 94, 0.12); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.25); }
+  .dr-badge.fallback-low { background: rgba(251, 146, 60, 0.12); color: #fb923c; border: 1px solid rgba(251, 146, 60, 0.25); }
+  .dr-badge .pulse-dot { width: 6px; height: 6px; }
+  .dr-model-name { font-size: 11px; color: #555; }
+  .dr-status-pill {
+    font-size: 10px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.5px; padding: 2px 6px; border-radius: 3px;
+  }
+  .dr-status-pill.primary { color: #22c55e; background: rgba(34, 197, 94, 0.08); }
+  .dr-status-pill.fallback { color: #fb923c; background: rgba(251, 146, 60, 0.08); }
+  .dr-meta { font-size: 11px; color: #444; margin-left: auto; white-space: nowrap; }
+
+  /* Inline stats inside dropdown */
+  .dropdown-stats {
+    display: flex; gap: 0; font-size: 11px;
+    color: #555; margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+  .dstat {
+    display: flex; align-items: center; gap: 4px;
+    padding: 0 10px;
+    border-right: 1px solid #1e2130;
+  }
+  .dstat:first-child { padding-left: 0; }
+  .dstat:last-child { border-right: none; }
+  .dstat-num { font-weight: 700; font-size: 12px; }
+  .dstat-num.g { color: #22c55e; }
+  .dstat-num.o { color: #fb923c; }
+  .dstat-num.r { color: #ef4444; }
+  .dstat-num.b { color: #60a5fa; }
+
+  /* Fallback chain inside dropdown */
+  .dropdown-chain {
+    display: flex; gap: 4px; align-items: center;
+    flex-wrap: wrap; margin-bottom: 12px;
+  }
+  .chain-item {
+    padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 500;
+    border: 1px solid #2a2d3a; color: #555; background: #12141c;
+  }
+  .chain-item.active         { border-color: #22c55e; color: #22c55e; background: rgba(34, 197, 94, 0.08); }
+  .chain-item.fallback-active{ border-color: #fb923c; color: #fb923c; background: rgba(251, 146, 60, 0.08); }
+  .chain-item.cooldown       { border-color: #ef4444; color: #ef4444; opacity: 0.55; text-decoration: line-through; }
+  .chain-timer               { font-size: 10px; text-decoration: none; }
+  .chain-arrow               { color: #2a2d3a; font-size: 12px; }
+
+  .divider { border: none; border-top: 1px solid #1e2130; margin: 10px 0; }
+
+  /* Collapsible history */
+  .history-toggle {
+    display: flex; align-items: center; gap: 6px;
+    background: none; border: none; cursor: pointer;
+    font-size: 11px; color: #555; padding: 0;
+    width: 100%; text-align: left;
+  }
+  .history-toggle:hover { color: #888; }
+  .history-toggle .tl { font-weight: 600; }
+  .history-toggle .ti {
+    font-size: 9px; transition: transform 0.2s; display: inline-block;
+  }
+  .history-toggle .ti.open { transform: rotate(90deg); }
+  .history-toggle .tc {
+    font-size: 10px; background: #1e2130; border: 1px solid #2a2d3a;
+    color: #777; padding: 1px 5px; border-radius: 3px; margin-left: auto;
+  }
+  .history-body {
+    overflow: hidden; max-height: 0;
+    transition: max-height 0.25s ease, opacity 0.2s ease; opacity: 0;
+  }
+  .history-body.open { max-height: 300px; opacity: 1; }
+  .timeline { display: flex; flex-direction: column; gap: 5px; margin-top: 8px; }
+  .timeline-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 9px; border-radius: 6px; background: #12141c; font-size: 11px;
+  }
+  .ttime { color: #444; font-size: 10px; min-width: 48px; font-family: monospace; }
+  .tdot  { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .tdot.g { background: #22c55e; }
+  .tdot.o { background: #fb923c; }
+  .tdot.r { background: #ef4444; }
+  .tmodel { font-weight: 600; }
+  .treason { color: #444; font-size: 10px; margin-left: auto; }
+  .tduration { color: #555; font-size: 10px; background: #1a1d27; padding: 1px 4px; border-radius: 3px; }
+
+  /* ═══════════════════════════════════════
+     FAKE PAGE BODY (to show context)
+  ═══════════════════════════════════════ */
+  .page-body {
+    padding: 24px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    opacity: 0.25;
+    pointer-events: none;
+  }
+  .fake-card {
+    background: #1a1d27;
+    border-radius: 10px;
+    border: 1px solid #2a2d3a;
+    height: 160px;
+  }
+
+  /* ═══════════════════════════════════════
+     ANNOTATION / SCENARIO LABELS
+  ═══════════════════════════════════════ */
+  .annotation {
+    font-size: 11px; color: #fb923c; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    padding: 6px 20px;
+    background: rgba(251, 146, 60, 0.05);
+    border-bottom: 1px solid #1e2130;
+  }
+
+  /* ═══════════════════════════════════════
+     SCENARIO WRAPPER — stacked views
+  ═══════════════════════════════════════ */
+  .scenario-block {
+    border-bottom: 2px solid #2a2d3a;
+    position: relative;
+    background: #0f1117;
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════
+     SCENARIO A — Normal (primary model, no issues)
+     + Panel CLOSED
+     ══════════════════════════════════════════════════ -->
+<div class="scenario-block">
+  <div class="annotation">✅ Scenario A — Normal / Primary Model / Panel Closed</div>
+
+  <div class="topbar">
+    <span class="topbar-title">Command Center</span>
+
+    <!-- System health group -->
+    <div class="status-group">
+      <span class="status-pill">
+        <span class="dot ok"></span>Gateway
+        <button class="restart-btn">↺</button>
+      </span>
+      <span class="status-pill">
+        <span class="dot ok"></span>Telegram
+      </span>
+      <span class="status-pill">
+        <span class="dot ok"></span>Live
+      </span>
+    </div>
+
+    <!-- Model badge (clickable) -->
+    <div class="status-group">
+      <button class="model-badge-btn primary" onclick="toggleDropdown('a')">
+        <span class="pulse-dot"></span>
+        Opus
+        <span class="badge-chevron" id="chevron-a">▾</span>
+      </button>
+    </div>
+
+    <!-- Stats group -->
+    <div class="status-group">
+      <span class="stat-pill">↑ <span class="stat-val">12h</span></span>
+      <span class="stat-pill">Sessions <span class="stat-val">8</span></span>
+      <span class="stat-pill">Cost <span class="stat-val">$0.42</span></span>
+      <span class="stat-pill">Errors <span class="stat-val green">0</span></span>
+    </div>
+
+    <div class="topbar-spacer"></div>
+    <button class="topbar-refresh">↺ Refresh</button>
+  </div>
+
+  <!-- Model detail dropdown (closed) -->
+  <div id="dropdown-a" style="display:none; padding: 0 20px; padding-bottom: 16px; background: #13151e; border-bottom: 1px solid #1e2130;">
+    <div style="max-width: 480px; padding-top: 16px;">
+      <!-- Active row -->
+      <div class="dropdown-active-row">
+        <span class="dr-badge primary"><span class="pulse-dot"></span>Opus</span>
+        <span class="dr-model-name">anthropic/claude-opus-4-6</span>
+        <span class="dr-status-pill primary">✓ Primary</span>
+        <span class="dr-meta">since 2:15p · 121 req</span>
+      </div>
+      <!-- Stats -->
+      <div class="dropdown-stats">
+        <div class="dstat"><span class="dstat-num g">121</span> primary</div>
+        <div class="dstat"><span class="dstat-num o">20</span> fallback</div>
+        <div class="dstat"><span class="dstat-num r">3</span> cooldowns</div>
+        <div class="dstat"><span class="dstat-num b">86%</span> uptime</div>
+      </div>
+      <!-- Chain -->
+      <div class="dropdown-chain">
+        <span class="chain-item active">Opus ✓</span>
+        <span class="chain-arrow">→</span>
+        <span class="chain-item">Sonnet</span>
+        <span class="chain-arrow">→</span>
+        <span class="chain-item">Kimi K2.5</span>
+        <span class="chain-arrow">→</span>
+        <span class="chain-item">GPT-4.1</span>
+        <span class="chain-arrow">→</span>
+        <span class="chain-item">Haiku</span>
+      </div>
+      <div class="divider"></div>
+      <!-- History toggle -->
+      <button class="history-toggle" onclick="toggleHistory(this)">
+        <span class="ti">▶</span>
+        <span class="tl">Recent Model Switches</span>
+        <span class="tc">6 today</span>
+      </button>
+      <div class="history-body">
+        <div class="timeline">
+          <div class="timeline-item">
+            <span class="ttime">2:15p</span>
+            <span class="tdot g"></span>
+            <span class="tmodel" style="color:#22c55e">→ Opus</span>
+            <span class="treason">Cooldown expired</span>
+            <span class="tduration">primary 2h 46m</span>
+          </div>
+          <div class="timeline-item">
+            <span class="ttime">1:50p</span>
+            <span class="tdot r"></span>
+            <span class="tmodel" style="color:#ef4444">→ GPT-4.1</span>
+            <span class="treason">Opus + Sonnet rate-limited</span>
+            <span class="tduration">fallback 25m</span>
+          </div>
+          <div class="timeline-item">
+            <span class="ttime">8:25a</span>
+            <span class="tdot o"></span>
+            <span class="tmodel" style="color:#fb923c">→ Sonnet</span>
+            <span class="treason">Opus rate-limited (429)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-body">
+    <div class="fake-card"></div><div class="fake-card"></div>
+    <div class="fake-card"></div><div class="fake-card"></div>
+    <div class="fake-card"></div><div class="fake-card"></div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════
+     SCENARIO B — Fallback active / Panel OPEN
+     ══════════════════════════════════════════════════ -->
+<div class="scenario-block">
+  <div class="annotation">⚠️ Scenario B — Fallback Active / Panel Open (clicked)</div>
+
+  <div class="topbar">
+    <span class="topbar-title">Command Center</span>
+
+    <div class="status-group">
+      <span class="status-pill">
+        <span class="dot ok"></span>Gateway
+        <button class="restart-btn">↺</button>
+      </span>
+      <span class="status-pill">
+        <span class="dot ok"></span>Telegram
+      </span>
+      <span class="status-pill">
+        <span class="dot ok"></span>Live
+      </span>
+    </div>
+
+    <!-- Model badge — fallback, open -->
+    <div class="status-group">
+      <button class="model-badge-btn fallback-low" onclick="toggleDropdown('b')">
+        <span class="pulse-dot"></span>
+        Sonnet · fallback #1
+        <span class="badge-chevron open" id="chevron-b">▾</span>
+      </button>
+      <span class="cooldown-inline">Opus ⏱ 4m 12s</span>
+    </div>
+
+    <div class="status-group">
+      <span class="stat-pill">↑ <span class="stat-val">12h</span></span>
+      <span class="stat-pill">Sessions <span class="stat-val">8</span></span>
+      <span class="stat-pill">Cost <span class="stat-val">$0.42</span></span>
+      <span class="stat-pill">Errors <span class="stat-val red">1</span></span>
+    </div>
+
+    <div class="topbar-spacer"></div>
+    <button class="topbar-refresh">↺ Refresh</button>
+  </div>
+
+  <!-- Model detail dropdown (OPEN) -->
+  <div id="dropdown-b" style="display:block; padding: 0 20px; padding-bottom: 16px; background: #13151e; border-bottom: 1px solid #2a2d3a;">
+    <div style="max-width: 520px; padding-top: 14px;">
+      <!-- Alert -->
+      <div class="alert-bar alert-low">
+        ⚠️ <span>Running on <strong>fallback #1</strong> — Opus rate-limited since 6:18p · cooldown: 4m remaining</span>
+      </div>
+      <!-- Active row -->
+      <div class="dropdown-active-row">
+        <span class="dr-badge fallback-low"><span class="pulse-dot" style="background:#fb923c"></span>Sonnet</span>
+        <span class="dr-model-name">anthropic/claude-sonnet-4-6</span>
+        <span class="dr-status-pill fallback">⚡ Fallback #1</span>
+        <span class="dr-meta">since 6:18p · 3 req</span>
+      </div>
+      <!-- Stats -->
+      <div class="dropdown-stats">
+        <div class="dstat"><span class="dstat-num g">121</span> primary</div>
+        <div class="dstat"><span class="dstat-num o">20</span> fallback</div>
+        <div class="dstat"><span class="dstat-num r">3</span> cooldowns</div>
+        <div class="dstat"><span class="dstat-num b">86%</span> uptime</div>
+      </div>
+      <!-- Chain -->
+      <div class="dropdown-chain">
+        <span class="chain-item cooldown">Opus <span class="chain-timer">⏱ 4m</span></span>
+        <span class="chain-arrow">→</span>
+        <span class="chain-item fallback-active">Sonnet ✓</span>
+        <span class="chain-arrow">→</span>
+        <span class="chain-item">Kimi K2.5</span>
+        <span class="chain-arrow">→</span>
+        <span class="chain-item">GPT-4.1</span>
+        <span class="chain-arrow">→</span>
+        <span class="chain-item">Haiku</span>
+      </div>
+      <div class="divider"></div>
+      <!-- History toggle — EXPANDED -->
+      <button class="history-toggle" onclick="toggleHistory(this)">
+        <span class="ti open">▶</span>
+        <span class="tl">Recent Model Switches</span>
+        <span class="tc">4 today</span>
+      </button>
+      <div class="history-body open">
+        <div class="timeline">
+          <div class="timeline-item">
+            <span class="ttime">6:18p</span>
+            <span class="tdot o"></span>
+            <span class="tmodel" style="color:#fb923c">→ Sonnet</span>
+            <span class="treason">Opus rate-limited (429)</span>
+          </div>
+          <div class="timeline-item">
+            <span class="ttime">5:42p</span>
+            <span class="tdot g"></span>
+            <span class="tmodel" style="color:#22c55e">→ Opus</span>
+            <span class="treason">Cooldown expired</span>
+            <span class="tduration">primary 36m</span>
+          </div>
+          <div class="timeline-item">
+            <span class="ttime">5:01p</span>
+            <span class="tdot o"></span>
+            <span class="tmodel" style="color:#fb923c">→ Haiku</span>
+            <span class="treason">Opus rate-limited (429)</span>
+            <span class="tduration">fallback 41m</span>
+          </div>
+          <div class="timeline-item">
+            <span class="ttime">2:15p</span>
+            <span class="tdot g"></span>
+            <span class="tmodel" style="color:#22c55e">→ Opus</span>
+            <span class="treason">Cooldown expired</span>
+            <span class="tduration">primary 2h 46m</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-body">
+    <div class="fake-card"></div><div class="fake-card"></div>
+    <div class="fake-card"></div><div class="fake-card"></div>
+    <div class="fake-card"></div><div class="fake-card"></div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════
+     COMPARISON: Current layout (fat stat cards)
+     ══════════════════════════════════════════════════ -->
+<div class="scenario-block">
+  <div class="annotation" style="color:#555;">📐 Current Layout (for comparison — note the wasted vertical space)</div>
+
+  <!-- Old topbar -->
+  <div class="topbar" style="height:52px; border-bottom: 1px solid #2a2d3a;">
+    <span class="topbar-title">Command Center</span>
+    <div class="status-group">
+      <span class="status-pill"><span class="dot ok"></span>Gateway <button class="restart-btn">Restart</button></span>
+      <span class="status-pill"><span class="dot ok"></span>Telegram</span>
+      <span class="status-pill"><span class="dot ok"></span>Live</span>
+    </div>
+    <div class="status-group">
+      <span style="font-size:11px; color:#555; margin-right:4px;">Model</span>
+      <button class="model-badge-btn primary" style="cursor:default">
+        <span class="pulse-dot"></span>Opus
+      </button>
+    </div>
+    <div class="topbar-spacer"></div>
+    <button class="topbar-refresh">Refresh</button>
+  </div>
+
+  <!-- Old stat cards -->
+  <div style="display:flex; gap:12px; padding: 16px 20px; background: #0f1117; border-bottom: 1px solid #2a2d3a;">
+    <div style="flex:1; background:#1a1d27; border:1px solid #2a2d3a; border-radius:8px; padding:14px 16px;">
+      <div style="font-size:10px; color:#555; text-transform:uppercase; letter-spacing:0.5px;">Uptime</div>
+      <div style="font-size:24px; font-weight:700; margin:4px 0 2px;">12h</div>
+      <div style="font-size:11px; color:#555;">System gateway</div>
+    </div>
+    <div style="flex:1; background:#1a1d27; border:1px solid #2a2d3a; border-radius:8px; padding:14px 16px;">
+      <div style="font-size:10px; color:#555; text-transform:uppercase; letter-spacing:0.5px;">Sessions Today</div>
+      <div style="font-size:24px; font-weight:700; margin:4px 0 2px;">8</div>
+      <div style="font-size:11px; color:#555;">All channels</div>
+    </div>
+    <div style="flex:1; background:#1a1d27; border:1px solid #2a2d3a; border-radius:8px; padding:14px 16px;">
+      <div style="font-size:10px; color:#555; text-transform:uppercase; letter-spacing:0.5px;">Cost Today</div>
+      <div style="font-size:24px; font-weight:700; margin:4px 0 2px;">$0.42</div>
+      <div style="font-size:11px; color:#555;">$3.10 this month</div>
+    </div>
+    <div style="flex:1; background:#1a1d27; border:1px solid #2a2d3a; border-radius:8px; padding:14px 16px;">
+      <div style="font-size:10px; color:#555; text-transform:uppercase; letter-spacing:0.5px;">Tokens (In/Out)</div>
+      <div style="font-size:22px; font-weight:700; margin:4px 0 2px;">42k / 18k</div>
+      <div style="font-size:11px; color:#555;">Today, all sessions</div>
+    </div>
+    <div style="flex:1; background:#1a1d27; border:1px solid #2a2d3a; border-radius:8px; padding:14px 16px;">
+      <div style="font-size:10px; color:#555; text-transform:uppercase; letter-spacing:0.5px;">Active Errors</div>
+      <div style="font-size:24px; font-weight:700; margin:4px 0 2px; color:#22c55e;">0</div>
+      <div style="font-size:11px; color:#555;">System health</div>
+    </div>
+  </div>
+
+  <!-- Model Status Panel (separate card in grid) -->
+  <div style="padding: 16px 20px; background: #0f1117;">
+    <div style="background:#1a1d27; border:1px solid #2a2d3a; border-radius:10px; padding:16px 20px; max-width:500px;">
+      <div style="font-size:14px; font-weight:700; margin-bottom:12px;">🤖 Model Status</div>
+      <div style="background:#12141c; border-radius:8px; padding:14px; display:flex; justify-content:space-between; align-items:center;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span class="model-badge-btn primary" style="cursor:default; font-size:14px; padding:8px 14px;">
+            <span class="pulse-dot"></span>Opus
+          </span>
+          <div>
+            <div style="font-size:13px; font-weight:700;">anthropic/claude-opus-4-6</div>
+            <div style="font-size:11px; color:#555; margin-top:2px;">Active since 2:15 PM</div>
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:10px; color:#22c55e; text-transform:uppercase;">✅ PRIMARY</div>
+          <div style="font-size:11px; color:#555; margin-top:2px;">121 requests served</div>
+        </div>
+      </div>
+      <div style="font-size:11px; color:#555; margin-top:8px; font-style:italic; text-align:center;">
+        ↑ this whole block is already shown in the topbar badge above
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function toggleDropdown(id) {
+    const el = document.getElementById('dropdown-' + id);
+    const chevron = document.getElementById('chevron-' + id);
+    const isVisible = el.style.display !== 'none';
+    el.style.display = isVisible ? 'none' : 'block';
+    if (chevron) chevron.classList.toggle('open', !isVisible);
+  }
+
+  function toggleHistory(btn) {
+    const body = btn.nextElementSibling;
+    const icon = btn.querySelector('.ti');
+    const isOpen = body.classList.toggle('open');
+    icon.classList.toggle('open', isOpen);
+  }
+</script>
+</body>
+</html>
