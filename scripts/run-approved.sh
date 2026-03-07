@@ -9,6 +9,7 @@ set -euo pipefail
 #   ./scripts/run-approved.sh --use-generic # use _generic.md if no specific prompt exists
 
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TASKS_FILE="$PROJECT_DIR/TASKS.md"
 PROMPTS_DIR="$PROJECT_DIR/prompts"
 TRACKER="$PROJECT_DIR/scripts/track-agent.sh"
@@ -51,24 +52,32 @@ extract_approved_features() {
   done < "$TASKS_FILE"
 }
 
-# Convert heading to kebab-case filename
-# "Idea Drill-Down Page" -> "idea-drilldown-page"
-# "Auto-Move to In Progress on Agent Spawn" -> "auto-move-to-in-progress-on-agent-spawn"
+# Convert heading to kebab-case filename (delegates to shared script)
 to_kebab() {
-  local name="$1"
-  # Strip trailing modifiers like " — remaining"
-  name="${name%% —*}"
-  # Lowercase
-  name=$(echo "$name" | tr '[:upper:]' '[:lower:]')
-  # Replace spaces with hyphens
-  name=$(echo "$name" | sed 's/[[:space:]]/-/g')
-  # Remove double hyphens from existing hyphens in names like "Drill-Down"
-  name=$(echo "$name" | sed 's/--*/-/g')
-  # Remove non-alphanumeric except hyphens
-  name=$(echo "$name" | sed 's/[^a-z0-9-]//g')
-  # Clean up trailing/leading hyphens
-  name=$(echo "$name" | sed 's/^-//;s/-$//')
-  echo "$name"
+  "$SCRIPT_DIR/to-kebab.sh" "$1"
+}
+
+# Try fuzzy match and self-heal misnamed prompt files
+# Usage: fuzzy_match_prompt <kebab> → sets prompt_file if match found
+fuzzy_match_prompt() {
+  local kebab="$1"
+  local prompt_file="$PROMPTS_DIR/$kebab.md"
+  if [[ -f "$prompt_file" ]]; then
+    echo "$prompt_file"
+    return 0
+  fi
+  # Try fuzzy: convert kebab hyphens to regex dots for flexible matching
+  local pattern
+  pattern=$(echo "$kebab" | tr '-' '.')
+  local fuzzy
+  fuzzy=$(ls "$PROMPTS_DIR"/*.md 2>/dev/null | xargs -I{} basename {} .md | grep -v '^_' | grep -i "$pattern" | head -1)
+  if [[ -n "$fuzzy" ]]; then
+    echo "  ⚠ Fuzzy match: $kebab → $fuzzy (renaming)" >&2
+    mv "$PROMPTS_DIR/$fuzzy.md" "$prompt_file"
+    echo "$prompt_file"
+    return 0
+  fi
+  return 1
 }
 
 # Move a feature heading + its tasks from Approved to In Progress in TASKS.md
@@ -149,9 +158,8 @@ fi
 echo "Approved features found:"
 while IFS= read -r feature; do
   kebab=$(to_kebab "$feature")
-  prompt_file="$PROMPTS_DIR/$kebab.md"
 
-  if [[ -f "$prompt_file" ]]; then
+  if fuzzy_match_prompt "$kebab" > /dev/null 2>&1; then
     echo "  ✓ $feature → prompts/$kebab.md"
   elif $USE_GENERIC && [[ -f "$PROMPTS_DIR/_generic.md" ]]; then
     echo "  ◇ $feature → prompts/_generic.md (generic fallback)"
@@ -166,11 +174,10 @@ echo ""
 spawned=false
 while IFS= read -r feature; do
   kebab=$(to_kebab "$feature")
-  prompt_file="$PROMPTS_DIR/$kebab.md"
   use_prompt=""
 
-  if [[ -f "$prompt_file" ]]; then
-    use_prompt="$prompt_file"
+  if matched=$(fuzzy_match_prompt "$kebab" 2>&1); then
+    use_prompt="$matched"
   elif $USE_GENERIC && [[ -f "$PROMPTS_DIR/_generic.md" ]]; then
     use_prompt="$PROMPTS_DIR/_generic.md"
   fi

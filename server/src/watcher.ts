@@ -45,6 +45,12 @@ export function startWatchers() {
     fs.watch(ideasDir, { recursive: false }, () => debouncedBroadcast('ideas'))
   } catch { /* dir might not exist */ }
 
+  // Watch auth-profiles.json for model cooldown state changes
+  const authProfilesPath = path.join(process.env.HOME || '', '.openclaw', 'agents', 'agent-scully', 'agent', 'auth-profiles.json')
+  try {
+    fs.watch(authProfilesPath, () => debouncedBroadcast('model-status'))
+  } catch { /* file might not exist */ }
+
   // Watch openclaw sessions.json for agent data
   const sessionsPath = path.join(process.env.HOME || '', '.openclaw', 'sessions.json')
   try {

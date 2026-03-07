@@ -13,12 +13,14 @@ import { tasksRouter } from "../../src/routes/tasks.js";
 import { actionsRouter } from "../../src/routes/actions.js";
 import { projectDetailRouter } from "../../src/routes/projectDetail.js";
 import { ideaDetailRouter } from "../../src/routes/ideaDetail.js";
+import { modelStatusRouter } from "../../src/routes/modelStatus.js";
 
 export function createTestApp() {
   const app = express();
 
   app.use("/api/system", systemRouter);
   app.use("/api/stats", statsRouter);
+  app.use("/api/model-status", modelStatusRouter);
   app.use("/api/projects", projectsRouter);
   app.use("/api/ideas", ideasRouter);
   app.use("/api/waiting", waitingRouter);

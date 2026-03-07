@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import StatCards from '../components/StatCards.vue'
+import ModelStatusPanel from '../components/ModelStatusPanel.vue'
 import ProjectsPanel from '../components/ProjectsPanel.vue'
 import WaitingPanel from '../components/WaitingPanel.vue'
 import IdeasPanel from '../components/IdeasPanel.vue'
@@ -11,6 +12,7 @@ import EventLogPanel from '../components/EventLogPanel.vue'
 import { useApi } from '../composables/useApi'
 
 const { data: stats } = useApi<Record<string, unknown>>('/api/stats')
+const { data: modelStatus } = useApi<Record<string, unknown>>('/api/model-status', 30000)
 const { data: projects } = useApi<unknown[]>('/api/projects')
 const { data: ideas } = useApi<unknown[]>('/api/ideas')
 const { data: waiting, refresh: refreshWaiting } = useApi<unknown[]>('/api/waiting')
@@ -23,7 +25,8 @@ const { data: logs } = useApi<unknown[]>('/api/logs')
 
 <template>
   <div class="content">
-    <StatCards :stats="stats" />
+    <StatCards :stats="stats" :modelStatus="modelStatus" />
+    <ModelStatusPanel />
     <div class="grid-2-1">
       <ProjectsPanel :projects="projects || []" />
       <WaitingPanel :groups="(waiting as any[]) || []" @refresh="refreshWaiting" />

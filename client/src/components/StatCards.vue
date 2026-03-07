@@ -1,7 +1,16 @@
 <script setup lang="ts">
-defineProps<{
+import { computed } from 'vue'
+
+const props = defineProps<{
   stats: Record<string, unknown> | null
+  modelStatus?: Record<string, unknown> | null
 }>()
+
+const errorCount = computed(() => {
+  const base = Number(props.stats?.activeErrors ?? 0)
+  const fallbackExtra = props.modelStatus?.isFallback === true ? 1 : 0
+  return base + fallbackExtra
+})
 
 function formatTokens(n: number): string {
   if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M'
@@ -35,7 +44,7 @@ function formatTokens(n: number): string {
     </div>
     <div class="stat-card">
       <div class="label">Active Errors</div>
-      <div class="value" :style="{ color: (stats?.activeErrors ?? 0) === 0 ? 'var(--green)' : 'var(--red)' }">{{ stats?.activeErrors ?? 0 }}</div>
+      <div class="value" :style="{ color: errorCount === 0 ? 'var(--green)' : 'var(--red)' }">{{ errorCount }}</div>
       <div class="sub">System health</div>
     </div>
   </div>
@@ -58,9 +67,9 @@ function formatTokens(n: number): string {
       <span class="pill-value">${{ stats?.costToday ?? '—' }}</span>
     </div>
     <div class="stat-pill">
-      <span class="dot" :style="{ background: (stats?.activeErrors ?? 0) === 0 ? 'var(--green)' : 'var(--red)' }"></span>
+      <span class="dot" :style="{ background: errorCount === 0 ? 'var(--green)' : 'var(--red)' }"></span>
       <span class="pill-label">Errors</span>
-      <span class="pill-value">{{ stats?.activeErrors ?? 0 }}</span>
+      <span class="pill-value">{{ errorCount }}</span>
     </div>
   </div>
 </template>

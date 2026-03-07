@@ -2,6 +2,7 @@ import { ref, onMounted, onUnmounted, type Ref } from 'vue'
 import { onWsUpdate } from './useWebSocket'
 
 function urlToChannels(url: string): string[] {
+  if (url.includes('/api/model-status')) return ['model-status']
   if (url.includes('/api/stats')) return ['projects']
   if (url.match(/\/api\/projects\/[^/]+\/(git|activity|prompts)/)) return ['tasks', 'activity']
   if (url.match(/\/api\/projects\/[^/]+/)) return ['tasks', 'projects']

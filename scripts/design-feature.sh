@@ -88,6 +88,21 @@ Make sure the JSON is valid."
 cd "$PROJECT_DIR"
 echo "$DESIGNER_PROMPT" | claude -p --dangerously-skip-permissions 2>&1 || true
 
+# Validate prompt filename matches the canonical kebab form
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+FEATURE_NAME=$(jq -r '.featureName // empty' "$REQUEST_FILE" 2>/dev/null)
+if [[ -n "$FEATURE_NAME" && "$FEATURE_NAME" != "null" ]]; then
+  EXPECTED=$("$SCRIPT_DIR/to-kebab.sh" "$FEATURE_NAME")
+  if [[ ! -f "$PROJECT_DIR/prompts/${EXPECTED}.md" ]]; then
+    # Find the most recently modified .md file in prompts/ (likely the one just created)
+    ACTUAL=$(ls -t "$PROJECT_DIR/prompts/"*.md 2>/dev/null | head -1 | xargs basename 2>/dev/null)
+    if [[ -n "$ACTUAL" && "$ACTUAL" != "_generic.md" && "$ACTUAL" != "${EXPECTED}.md" ]]; then
+      mv "$PROJECT_DIR/prompts/$ACTUAL" "$PROJECT_DIR/prompts/${EXPECTED}.md"
+      echo "Renamed prompt: $ACTUAL → ${EXPECTED}.md"
+    fi
+  fi
+fi
+
 # Verify status was updated by the agent
 if ! jq -e '.status == "done"' "$REQUEST_FILE" > /dev/null 2>&1; then
   # Check if TASKS.md was modified (agent did work but didn't update status)
