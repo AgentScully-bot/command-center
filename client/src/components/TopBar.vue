@@ -433,16 +433,11 @@ function historyModelColor(item: HistoryItem): string {
   transition: opacity 0.15s;
   background: none;
   font-family: inherit;
-  max-width: 160px;
   white-space: nowrap;
-  overflow: hidden;
 }
 
 .badge-text {
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
-  min-width: 0;
 }
 .model-badge-btn:hover { opacity: 0.85; }
 .model-badge-btn.primary {
