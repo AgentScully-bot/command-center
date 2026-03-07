@@ -2,7 +2,7 @@ import { Router } from "express";
 import express from "express";
 import fs from "fs/promises";
 import path from "path";
-import { PROJECTS_DIR } from "../services/paths.js";
+import { HOME, PROJECTS_DIR } from "../services/paths.js";
 import { parseProjectMd } from "../services/markdown.js";
 import { run } from "../services/shell.js";
 import { broadcast } from "../ws.js";
@@ -810,6 +810,34 @@ projectDetailRouter.get("/:id/design-status/:requestId", async (req, res) => {
     res.json(JSON.parse(content));
   } catch {
     res.json({ status: "not-found" });
+  }
+});
+
+// --- GET /api/projects/:id/deploys ---
+
+function relativeTime(deployedAt: string): string {
+  const diff = Math.floor((Date.now() - new Date(deployedAt).getTime()) / 1000);
+  if (diff < 60) return "just now";
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+}
+
+projectDetailRouter.get("/:id/deploys", async (req, res) => {
+  const { id } = req.params;
+  if (!sanitizeId(id)) { res.status(400).json({ error: "Invalid project id" }); return; }
+
+  const logPath = path.join(HOME, "deployments", id, "deploy-log.json");
+  try {
+    const content = await fs.readFile(logPath, "utf-8");
+    const log = JSON.parse(content) as { status: string; deployedAt: string };
+    res.json({
+      status: log.status,
+      deployedAt: log.deployedAt || null,
+      relativeTime: log.deployedAt ? relativeTime(log.deployedAt) : null,
+    });
+  } catch {
+    res.json({ status: "unknown", deployedAt: null, relativeTime: null });
   }
 });
 

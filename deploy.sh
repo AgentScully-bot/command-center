@@ -91,6 +91,10 @@ if [ "$TEST_PASSED" = false ]; then
   echo "   See tests/last-run.json for details"
   echo ""
 
+  # Write deploy failure log
+  mkdir -p "$DEPLOY_DIR"
+  echo "{\"status\":\"failed\",\"deployedAt\":\"$(date -Iseconds)\"}" > "$DEPLOY_DIR/deploy-log.json"
+
   # Add waiting tag to TASKS.md
   TASKS_FILE="$PROJECT_DIR/TASKS.md"
   if grep -q "## 🔴 Blocked" "$TASKS_FILE"; then
@@ -148,8 +152,9 @@ else
   echo "Or install the service — see DEPLOYMENT.md"
 fi
 
-# Save successful test results
+# Save successful deploy log
 echo "[5/5] Recording deploy success..."
+echo "{\"status\":\"success\",\"deployedAt\":\"$(date -Iseconds)\"}" > "$DEPLOY_DIR/deploy-log.json"
 echo ""
 echo "=== Deployed successfully ==="
 echo "URL: http://$(hostname -I | awk '{print $1}'):$(grep PORT $DEPLOY_DIR/.env 2>/dev/null | cut -d= -f2 || echo 3000)"

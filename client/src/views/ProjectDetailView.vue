@@ -19,6 +19,7 @@ const { data: agents } = useApi<any[]>('/api/agents')
 const { data: git } = useApi<Record<string, any>>(`/api/projects/${id.value}/git`)
 const { data: activity } = useApi<any[]>(`/api/projects/${id.value}/activity`)
 const { data: prompts } = useApi<any[]>(`/api/projects/${id.value}/prompts`)
+const { data: deployInfo, refresh: refreshDeploy } = useApi<Record<string, any>>(`/api/projects/${id.value}/deploys`)
 
 const projectAgents = computed(() => {
   if (!agents.value) return []
@@ -38,6 +39,45 @@ const waitingItems = computed(() => {
     }
   }
   return items
+})
+
+// Status bar computed properties
+
+const progressPillClass = computed(() => {
+  const p = project.value?.progress ?? 0
+  if (p >= 80) return 'green'
+  if (p >= 40) return 'orange'
+  return 'muted'
+})
+
+const deployLabel = computed(() => {
+  const d = deployInfo.value
+  if (!d || d.status === 'unknown') return 'no deploy data'
+  if (d.status === 'success') return `✓ deployed ${d.relativeTime}`
+  if (d.status === 'failed') return `✗ deploy failed`
+  return 'no deploy data'
+})
+
+const deployPillClass = computed(() => {
+  const d = deployInfo.value
+  if (!d || d.status === 'unknown') return 'muted'
+  if (d.status === 'success') return 'green'
+  if (d.status === 'failed') return 'red'
+  return 'muted'
+})
+
+const runningAgentCount = computed(() => {
+  return projectAgents.value.filter((a: any) => a.status === 'running').length
+})
+
+const agentLabel = computed(() => {
+  const n = runningAgentCount.value
+  if (n === 0) return 'no agents'
+  return `${n} agent${n === 1 ? '' : 's'} running`
+})
+
+const agentPillClass = computed(() => {
+  return runningAgentCount.value > 0 ? 'green' : 'muted'
 })
 
 const toastRef = ref<InstanceType<typeof ToastNotification> | null>(null)
@@ -77,8 +117,13 @@ async function deploy() {
   if (!confirm('Run deploy.sh?')) return
   const res = await fetch(`/api/projects/${id.value}/deploy`, { method: 'POST' })
   const data = await res.json()
-  if (data.ok) alert('Deploy complete')
-  else alert('Deploy failed: ' + (data.error || 'unknown'))
+  if (data.ok) {
+    alert('Deploy complete')
+    refreshDeploy()
+  } else {
+    alert('Deploy failed: ' + (data.error || 'unknown'))
+    refreshDeploy()
+  }
 }
 </script>
 
@@ -102,31 +147,42 @@ async function deploy() {
 
     <div class="content">
       <div class="project-header">
-        <div class="project-desc">{{ project.description }}</div>
-        <div class="project-meta-grid">
-          <div class="meta-item" v-if="project.stack">
-            <div class="meta-label">Stack</div>
-            <div class="meta-value">{{ project.stack }}</div>
-          </div>
-          <div class="meta-item" v-if="project.started">
-            <div class="meta-label">Started</div>
-            <div class="meta-value">{{ project.started }}</div>
-          </div>
-          <div class="meta-item" v-if="project.git">
-            <div class="meta-label">Last Commit</div>
-            <div class="meta-value mono">{{ project.git.lastCommit }}</div>
-          </div>
-          <div class="meta-item" v-if="project.port">
-            <div class="meta-label">Port</div>
-            <div class="meta-value mono">{{ project.port }}</div>
-          </div>
+        <!-- Row 1: Quick status bar -->
+        <div class="project-status-bar">
+          <!-- Task progress -->
+          <span v-if="project.tasks" class="status-pill" :class="progressPillClass">
+            {{ project.tasks.counts.done }}/{{ project.tasks.counts.total }} tasks · {{ project.progress }}%
+          </span>
+
+          <!-- Git status -->
+          <span v-if="project.git?.branch" class="status-pill">
+            <span class="git-dot" :class="project.git.clean ? 'clean' : 'dirty'"></span>
+            {{ project.git.branch }}
+          </span>
+
+          <!-- Deploy status -->
+          <span class="status-pill" :class="deployPillClass">
+            {{ deployLabel }}
+          </span>
+
+          <!-- Agents -->
+          <span class="status-pill" :class="agentPillClass">
+            <span v-if="runningAgentCount > 0" class="agent-pulse"></span>
+            {{ agentLabel }}
+          </span>
         </div>
-        <div class="progress-row" v-if="project.tasks">
-          <div class="progress-bar-lg">
-            <div class="progress-fill-lg" :style="{ width: project.progress + '%' }"></div>
-          </div>
-          <span class="progress-label-lg">{{ project.progress }}%</span>
-          <span class="progress-detail">{{ project.tasks.counts.done }} of {{ project.tasks.counts.total }} tasks done &middot; {{ project.tasks.counts.total - project.tasks.counts.done }} remaining</span>
+
+        <!-- Row 2: Compact meta -->
+        <div class="project-meta-compact">
+          <span class="project-desc-inline">{{ project.description }}</span>
+          <template v-if="project.stack || project.started || project.port">
+            <span class="meta-divider">|</span>
+            <span class="meta-inline" v-if="project.stack">Stack: {{ project.stack }}</span>
+            <span class="meta-dot" v-if="project.stack && (project.started || project.port)">·</span>
+            <span class="meta-inline" v-if="project.started">Started: {{ project.started }}</span>
+            <span class="meta-dot" v-if="project.started && project.port">·</span>
+            <span class="meta-inline" v-if="project.port">Port: {{ project.port }}</span>
+          </template>
         </div>
       </div>
 
@@ -189,18 +245,60 @@ async function deploy() {
 
 .project-header {
   background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 20px 24px; margin-bottom: 16px;
+  padding: 16px 24px; margin-bottom: 16px;
 }
-.project-desc { font-size: 13px; color: var(--text-secondary); max-width: 700px; word-break: break-word; overflow-wrap: break-word; }
-.project-meta-grid { display: flex; gap: 32px; margin-top: 14px; }
-.meta-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 2px; }
-.meta-value { font-size: 13px; font-weight: 500; }
-.meta-value.mono { font-family: 'SF Mono', Consolas, monospace; font-size: 12px; word-break: break-all; overflow-wrap: break-word; }
-.progress-row { display: flex; align-items: center; gap: 12px; margin-top: 14px; }
-.progress-bar-lg { flex: 1; height: 6px; background: var(--bg-primary); border-radius: 3px; overflow: hidden; max-width: 300px; }
-.progress-fill-lg { height: 100%; border-radius: 3px; background: var(--green); }
-.progress-label-lg { font-size: 13px; font-weight: 600; color: var(--green); }
-.progress-detail { font-size: 11px; color: var(--text-muted); }
+
+/* Row 1: Status bar */
+.project-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 0 10px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.status-pill {
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+.status-pill.green { border-color: var(--green); color: var(--green); background: var(--green-dim); }
+.status-pill.orange { border-color: var(--orange); color: var(--orange); background: var(--orange-dim); }
+.status-pill.red { border-color: var(--red); color: var(--red); background: var(--red-dim); }
+.status-pill.muted { color: var(--text-muted); }
+
+.git-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.git-dot.clean { background: var(--green); }
+.git-dot.dirty { background: var(--red); }
+
+.agent-pulse {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--green);
+  animation: pulse 2s infinite;
+  flex-shrink: 0;
+}
+
+/* Row 2: Compact meta */
+.project-meta-compact {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.project-desc-inline { font-size: 13px; color: var(--text-secondary); max-width: 50ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.meta-divider { color: var(--border-light); margin: 0 4px; }
+.meta-dot { color: var(--border-light); }
+.meta-inline { color: var(--text-muted); }
 
 .project-grid { display: grid; grid-template-columns: 1fr 340px; gap: 16px; }
 .sidebar-panels { display: flex; flex-direction: column; gap: 12px; }
@@ -240,10 +338,11 @@ async function deploy() {
   .topbar-actions { width: 100%; overflow-x: auto; gap: 6px; }
   .topbar-actions .btn { flex-shrink: 0; min-height: 36px; }
 
-  .project-header { padding: 14px 16px; margin: 0 0 10px; border-radius: 0; border-left: none; border-right: none; }
-  .project-meta-grid { flex-wrap: wrap; gap: 16px; }
-  .progress-row { flex-wrap: wrap; }
-  .progress-bar-lg { max-width: none; }
+  .project-header { padding: 12px 16px; margin: 0 0 10px; border-radius: 0; border-left: none; border-right: none; }
+  .project-status-bar { gap: 6px; }
+  .project-meta-compact { flex-direction: column; gap: 4px; }
+  .project-desc-inline { max-width: none; white-space: normal; }
+  .meta-divider { display: none; }
 
   .project-grid { grid-template-columns: 1fr; gap: 10px; }
 
