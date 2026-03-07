@@ -237,17 +237,59 @@ while IFS= read -r feature; do
           if bash "$PROJECT_DIR/deploy.sh" 2>&1 | tee -a "/tmp/deploy-$PROJECT_NAME.log"; then
             echo "  Deploy successful ✓"
           else
-            echo "  Deploy FAILED ✗"
             DEPLOY_SUCCESS=false
-            local date_stamp
-            date_stamp=$(date +%Y-%m-%d)
-            if grep -q "## 🔴 Blocked" "$TASKS_FILE" 2>/dev/null; then
-              sed -i "/## 🔴 Blocked/a\\- [ ] Deploy failed for $feature — check /tmp/deploy-$PROJECT_NAME.log ($date_stamp) [waiting:owner]" "$TASKS_FILE"
-            else
-              printf '\n## 🔴 Blocked\n- [ ] Deploy failed for %s — check /tmp/deploy-%s.log (%s) [waiting:owner]\n' \
-                "$feature" "$PROJECT_NAME" "$date_stamp" >> "$TASKS_FILE"
+            echo "  Deploy failed — attempting auto-fix with Sonnet agent..."
+
+            FIX_PROMPT="$PROMPTS_DIR/fix-test-failures.md"
+            FIX_ATTEMPTED=false
+            FIX_SUCCESS=false
+
+            if [[ -f "$FIX_PROMPT" ]]; then
+              FIX_ATTEMPTED=true
+
+              openclaw system event --text "🔧 Test failures after $feature ($PROJECT_NAME) — spawning fix agent" --mode now 2>/dev/null || true
+
+              FIX_AGENT_ID=$("$TRACKER" start \
+                --task "Fix test failures: $feature" \
+                --project "$PROJECT_NAME" \
+                --pid "$$" \
+                --model "Sonnet")
+
+              claude -p "$(cat "$FIX_PROMPT")" \
+                --model anthropic/claude-sonnet-4-6 \
+                --dangerously-skip-permissions \
+                --cwd "$PROJECT_DIR" &
+              FIX_PID=$!
+
+              if wait "$FIX_PID"; then
+                "$TRACKER" complete "$FIX_AGENT_ID" --summary "Fix agent ran for: $feature"
+                openclaw system event --text "🔧 Fix agent done for $feature — retrying deploy" --mode now 2>/dev/null || true
+
+                echo "  Fix agent completed — retrying deploy..."
+                if bash "$PROJECT_DIR/deploy.sh" 2>&1 | tee -a "/tmp/deploy-$PROJECT_NAME.log"; then
+                  DEPLOY_SUCCESS=true
+                  FIX_SUCCESS=true
+                  openclaw system event --text "✅ Deployed: $feature ($PROJECT_NAME) — fixed and deployed by remediation agent" --mode now 2>/dev/null || true
+                else
+                  "$TRACKER" error "$FIX_AGENT_ID" --message "Deploy still failing after fix attempt for: $feature"
+                  openclaw system event --text "❌ Test failures persist after fix attempt: $feature ($PROJECT_NAME) — needs manual review" --mode now 2>/dev/null || true
+                fi
+              else
+                "$TRACKER" error "$FIX_AGENT_ID" --message "Fix agent crashed for: $feature"
+                openclaw system event --text "❌ Fix agent crashed for $feature ($PROJECT_NAME) — needs manual review" --mode now 2>/dev/null || true
+              fi
             fi
-            openclaw system event --text "⚠️ Deploy blocked: $feature ($PROJECT_NAME) — tests or build failed. Feature code is complete but not deployed." --mode now 2>/dev/null || true
+
+            if ! $DEPLOY_SUCCESS; then
+              local date_stamp
+              date_stamp=$(date +%Y-%m-%d)
+              if grep -q "## 🔴 Blocked" "$TASKS_FILE" 2>/dev/null; then
+                sed -i "/## 🔴 Blocked/a\\- [ ] Deploy failed for $feature — check /tmp/deploy-$PROJECT_NAME.log ($date_stamp) [waiting:owner]" "$TASKS_FILE"
+              else
+                printf '\n## 🔴 Blocked\n- [ ] Deploy failed for %s — check /tmp/deploy-%s.log (%s) [waiting:owner]\n' \
+                  "$feature" "$PROJECT_NAME" "$date_stamp" >> "$TASKS_FILE"
+              fi
+            fi
           fi
         fi
       fi
