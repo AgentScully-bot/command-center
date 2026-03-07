@@ -223,7 +223,7 @@ function historyModelColor(item: HistoryItem): string {
     <div class="pill-group model-dropdown-wrap desktop-only" ref="modelWrapRef">
       <button class="model-badge-btn" :class="badgeClass" @click="showModelPanel = !showModelPanel">
         <span class="pulse-dot"></span>
-        {{ activeAlias }}{{ fallbackLabel }}
+        <span class="badge-text">{{ activeAlias }}{{ fallbackLabel }}</span>
         <span class="badge-chevron" :class="{ open: showModelPanel }">▾</span>
       </button>
       <span v-if="isFallback && cooldownDisplay" class="cooldown-inline">
@@ -433,6 +433,16 @@ function historyModelColor(item: HistoryItem): string {
   transition: opacity 0.15s;
   background: none;
   font-family: inherit;
+  max-width: 160px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.badge-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 .model-badge-btn:hover { opacity: 0.85; }
 .model-badge-btn.primary {
