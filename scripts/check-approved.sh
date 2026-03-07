@@ -4,6 +4,7 @@ set -euo pipefail
 # check-approved.sh — Check for approved tasks and kick off a coder agent if none running
 # Called by OpenClaw heartbeat to auto-start implementation of approved features.
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 TASKS_FILE="$PROJECT_DIR/TASKS.md"
 TRACKER="$PROJECT_DIR/scripts/track-agent.sh"
@@ -66,6 +67,9 @@ log_kickoff() {
 if [[ ! -f "$TASKS_FILE" ]]; then
   exit 0
 fi
+
+# Check for stale deploy block — if tests now pass, auto-clear and redeploy
+"$SCRIPT_DIR/check-blocked-deploy.sh" || true
 
 # No approved features? Exit silently.
 if ! has_approved_features; then
