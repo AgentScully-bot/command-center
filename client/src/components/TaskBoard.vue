@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import PromptViewer from './PromptViewer.vue'
+import { useHeartbeatStatus } from '../composables/useHeartbeatStatus'
 
 interface TaskItem {
   text: string
@@ -37,6 +38,27 @@ const emit = defineEmits<{
   (e: 'refresh'): void
   (e: 'toast', message: string, type: 'success' | 'error' | 'info'): void
 }>()
+
+const { secondsRemaining, isOverdue, withinActiveHours, lastFiredAt, nextExpectedAt } = useHeartbeatStatus()
+
+const heartbeatLabel = computed(() => {
+  if (!withinActiveHours.value) return '⏱ paused'
+  if (secondsRemaining.value === null) return null
+  if (secondsRemaining.value <= 0) return '⏱ any moment'
+  if (secondsRemaining.value <= 60) return `⏱ ~${secondsRemaining.value}s`
+  return `⏱ ~${Math.round(secondsRemaining.value / 60)}m`
+})
+
+function fmtTime(iso: string | null): string {
+  if (!iso) return '?'
+  return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+}
+
+const heartbeatTooltip = computed(() => {
+  if (!withinActiveHours.value) return 'Outside active hours (06:30–23:00 CT)'
+  if (!lastFiredAt.value) return 'No heartbeat found'
+  return `Last heartbeat: ${fmtTime(lastFiredAt.value)} · Next expected: ~${fmtTime(nextExpectedAt.value)}`
+})
 
 const showDone = ref(false)
 const viewingPrompt = ref('')
@@ -163,7 +185,16 @@ function pollDesignStatus() {
 <template>
   <div class="panel" v-if="tasks">
     <div class="panel-header">
-      <div><span class="panel-title">Task Board</span><span class="panel-count">{{ tasks.counts.total }} tasks</span></div>
+      <div class="panel-header-left">
+        <span class="panel-title">Task Board</span>
+        <span class="panel-count">{{ tasks.counts.total }} tasks</span>
+        <span
+          v-if="heartbeatLabel !== null"
+          class="heartbeat-badge"
+          :class="{ 'heartbeat-paused': !withinActiveHours, 'heartbeat-overdue': isOverdue && withinActiveHours }"
+          :title="heartbeatTooltip"
+        >{{ heartbeatLabel }}</span>
+      </div>
     </div>
 
     <!-- Mobile: full-width implement button above sections -->
@@ -509,6 +540,40 @@ function pollDesignStatus() {
 @media (min-width: 769px) {
   .mobile-only { display: none !important; }
   .section-content { display: block !important; }
+}
+
+.panel-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.heartbeat-badge {
+  font-size: 0.72rem;
+  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: rgba(100, 100, 140, 0.15);
+  color: var(--text-muted);
+  white-space: nowrap;
+  cursor: default;
+  letter-spacing: 0.01em;
+}
+
+.heartbeat-paused {
+  opacity: 0.5;
+}
+
+.heartbeat-overdue {
+  animation: heartbeat-pulse 1.8s ease-in-out infinite;
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+
+@keyframes heartbeat-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
 }
 
 @media (max-width: 768px) {

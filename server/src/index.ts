@@ -18,6 +18,7 @@ import { actionsRouter } from "./routes/actions.js";
 import { projectDetailRouter } from "./routes/projectDetail.js";
 import { ideaDetailRouter } from "./routes/ideaDetail.js";
 import { modelStatusRouter } from "./routes/modelStatus.js";
+import { heartbeatRouter } from "./routes/heartbeat.js";
 
 const app = express();
 const PORT = parseInt(process.env.PORT || "3000", 10);
@@ -37,6 +38,7 @@ app.use("/api/logs", logsRouter);
 app.use("/api/tasks", tasksRouter);
 app.use("/api/actions", actionsRouter);
 app.use("/api/model-status", modelStatusRouter);
+app.use("/api/heartbeat-status", heartbeatRouter);
 app.use("/api/projects", projectDetailRouter);
 app.use("/api/ideas", ideaDetailRouter);
 
