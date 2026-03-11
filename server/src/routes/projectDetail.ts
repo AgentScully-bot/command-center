@@ -464,6 +464,70 @@ projectDetailRouter.post("/:id/approve", async (req, res) => {
   }
 });
 
+// --- DELETE /api/projects/:id/task ---
+
+projectDetailRouter.delete("/:id/task", async (req, res) => {
+  const { id } = req.params;
+  if (!sanitizeId(id)) { res.status(400).json({ error: "Invalid project id" }); return; }
+
+  const { task } = req.body as { task?: string };
+  if (!task) { res.status(400).json({ error: "Provide task text" }); return; }
+
+  const tasksPath = path.join(PROJECTS_DIR, id, "TASKS.md");
+  let content: string;
+  try {
+    content = await fs.readFile(tasksPath, "utf-8");
+  } catch {
+    res.status(404).json({ error: "TASKS.md not found" }); return;
+  }
+
+  const lines = content.split("\n");
+  let deleted = false;
+  let inPlanned = false;
+  const result: string[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const h2 = lines[i].match(/^##\s+(.+)/);
+    if (h2) {
+      inPlanned = h2[1].toLowerCase().includes("planned") || h2[1].toLowerCase().includes("todo");
+    }
+
+    // Only delete undone tasks in the Planned section
+    if (inPlanned && !deleted) {
+      const taskMatch = lines[i].match(/^- \[ \]\s+(.+)/);
+      if (taskMatch && taskMatch[1].trim() === task.trim()) {
+        deleted = true;
+        continue; // skip this line
+      }
+    }
+
+    result.push(lines[i]);
+  }
+
+  if (!deleted) {
+    res.status(404).json({ error: "Task not found in Planned section" }); return;
+  }
+
+  // Clean up orphaned ### headings (a heading with no task lines before the next heading/section)
+  const cleaned: string[] = [];
+  for (let i = 0; i < result.length; i++) {
+    if (result[i].match(/^###\s+/)) {
+      // Look ahead: is there at least one task line before the next ## or ### ?
+      let hasTask = false;
+      for (let j = i + 1; j < result.length; j++) {
+        if (result[j].match(/^##\s+/) || result[j].match(/^###\s+/)) break;
+        if (result[j].match(/^- \[/)) { hasTask = true; break; }
+      }
+      if (!hasTask) continue; // skip orphaned heading
+    }
+    cleaned.push(result[i]);
+  }
+
+  await fs.writeFile(tasksPath, cleaned.join("\n"), "utf-8");
+  broadcast('tasks'); broadcast('projects');
+  res.json({ ok: true, deleted: 1 });
+});
+
 // --- POST /api/projects/:id/deploy ---
 
 projectDetailRouter.post("/:id/deploy", async (req, res) => {

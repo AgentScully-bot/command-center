@@ -1,8 +1,50 @@
 <script setup lang="ts">
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+
 defineProps<{
   waitingCount: number
   projectCount: number
 }>()
+
+interface ModelStatus {
+  active: { model: string; alias: string }
+  isFallback: boolean
+}
+
+const modelStatus = ref<ModelStatus | null>(null)
+let pollInterval: ReturnType<typeof setInterval> | null = null
+
+async function fetchModelStatus() {
+  try {
+    const res = await fetch('/api/model-status')
+    if (res.ok) {
+      modelStatus.value = await res.json()
+    }
+  } catch {
+    // keep last known value on error
+  }
+}
+
+const dotClass = computed(() => {
+  if (modelStatus.value === null) return 'unknown'
+  return modelStatus.value.isFallback ? 'fallback' : 'online'
+})
+
+const modelLabel = computed(() => modelStatus.value?.active?.alias ?? 'loading…')
+
+const tooltip = computed(() => {
+  if (!modelStatus.value) return undefined
+  return `${modelStatus.value.active.model} · ${modelStatus.value.isFallback ? 'fallback' : 'primary'}`
+})
+
+onMounted(() => {
+  fetchModelStatus()
+  pollInterval = setInterval(fetchModelStatus, 60_000)
+})
+
+onUnmounted(() => {
+  if (pollInterval !== null) clearInterval(pollInterval)
+})
 </script>
 
 <template>
@@ -35,11 +77,11 @@ defineProps<{
     </div>
 
     <div class="sidebar-footer">
-      <div class="agent-row">
-        <span class="status-dot online"></span>
+      <div class="agent-row" :title="tooltip">
+        <span class="status-dot" :class="dotClass"></span>
         <div>
-          <div class="name">AI Assistant</div>
-          <div class="model">claude-opus-4-6</div>
+          <div class="name">Agent Scully</div>
+          <div class="model">{{ modelLabel }}</div>
         </div>
       </div>
     </div>
@@ -72,9 +114,11 @@ defineProps<{
 .nav-item .badge.warn { background: var(--yellow); color: #000; }
 
 .sidebar-footer { padding: 12px 16px; border-top: 1px solid var(--border); }
-.agent-row { display: flex; align-items: center; gap: 8px; }
+.agent-row { display: flex; align-items: center; gap: 8px; cursor: default; }
 .status-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 .status-dot.online { background: var(--green); box-shadow: 0 0 6px rgba(52, 211, 153, 0.4); }
+.status-dot.fallback { background: var(--yellow); box-shadow: 0 0 6px rgba(234, 179, 8, 0.4); }
+.status-dot.unknown { background: var(--text-muted); }
 .agent-row .name { font-size: 12px; color: var(--text-secondary); }
 .agent-row .model { font-size: 10px; color: var(--text-muted); }
 

@@ -87,13 +87,13 @@ function showToast(message: string, type: 'success' | 'error' | 'info' = 'info')
   toastRef.value?.addToast(message, type)
 }
 
-async function approveTask(task: string) {
-  await fetch(`/api/projects/${id.value}/approve`, {
-    method: 'POST',
+async function deleteTask(task: string) {
+  await fetch(`/api/projects/${id.value}/task`, {
+    method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ task }),
   })
-  refresh()
+  await refresh()
 }
 
 async function approveFeature(feature: string) {
@@ -193,7 +193,7 @@ async function deploy() {
           :tasks="project.tasks"
           :project-id="id"
           :prompts="prompts || []"
-          @approve-task="approveTask"
+          @delete-task="deleteTask"
           @approve-feature="approveFeature"
           @refresh="refresh"
           @toast="showToast"

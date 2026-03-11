@@ -33,7 +33,7 @@ interface PromptInfo {
 
 const props = defineProps<{ tasks: TaskSections; projectId: string; prompts: PromptInfo[] }>()
 const emit = defineEmits<{
-  (e: 'approveTask', task: string): void
+  (e: 'deleteTask', task: string): void
   (e: 'approveFeature', feature: string): void
   (e: 'refresh'): void
   (e: 'toast', message: string, type: 'success' | 'error' | 'info'): void
@@ -321,7 +321,7 @@ function pollDesignStatus() {
               </div>
             </div>
             <div class="task-actions">
-              <button class="task-btn approve" @click="emit('approveTask', task.text)">Approve</button>
+              <button class="task-btn delete" @click="emit('deleteTask', task.text)">Delete</button>
             </div>
           </div>
         </div>
@@ -466,8 +466,8 @@ function pollDesignStatus() {
 .task-item:hover .task-actions { opacity: 1; }
 .task-btn { padding: 2px 8px; border-radius: 4px; border: 1px solid var(--border); background: transparent; font-size: 10px; color: var(--text-muted); cursor: pointer; font-family: inherit; }
 .task-btn:hover { border-color: var(--accent); color: var(--accent); }
-.task-btn.approve { border-color: var(--green); color: var(--green); }
-.task-btn.approve:hover { background: var(--green-dim); }
+.task-btn.delete { border-color: var(--red, #ef4444); color: var(--red, #ef4444); }
+.task-btn.delete:hover { background: var(--red-dim, rgba(239,68,68,0.1)); }
 
 .done-group { opacity: 0.5; }
 .done-summary { padding: 10px 16px; font-size: 11px; color: var(--text-muted); text-align: center; border-top: 1px solid var(--border); }
