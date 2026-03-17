@@ -779,17 +779,42 @@ projectDetailRouter.post("/:id/implement", async (req, res) => {
     // Run run-approved.sh in background — spawns coder agent for approved tasks
     const scriptPath = path.join(projDir, "scripts", "run-approved.sh");
     const { spawn } = await import("child_process");
+    const { openSync, closeSync } = await import("fs");
+
+    const logFile = `/tmp/run-approved-${id}.log`;
+    const logFd = openSync(logFile, "a");
     const child = spawn("bash", [scriptPath, "--use-generic"], {
       cwd: projDir,
       detached: true,
-      stdio: "ignore",
+      stdio: ["ignore", logFd, logFd],
       env: { ...process.env, PATH: process.env.PATH || "/usr/local/bin:/usr/bin:/bin" },
     });
+    closeSync(logFd);
     child.unref();
     broadcast('agents'); broadcast('tasks');
     res.json({ status: "ok", message: `Implementation started (PID ${child.pid})` });
   } catch (err) {
     res.status(500).json({ error: "Failed to start implementation", detail: String(err) });
+  }
+});
+
+// --- GET /api/projects/:id/run-log ---
+
+projectDetailRouter.get("/:id/run-log", async (req, res) => {
+  const { id } = req.params;
+  if (!sanitizeId(id)) { res.status(400).json({ error: "Invalid project id" }); return; }
+
+  const logFile = `/tmp/run-approved-${id}.log`;
+  try {
+    const content = await fs.readFile(logFile, "utf-8");
+    const lines = content.split("\n").filter(l => l.length > 0);
+    res.json({ lines: lines.slice(-100) });
+  } catch (err: any) {
+    if (err.code === "ENOENT") {
+      res.status(404).json({ error: "No log yet" });
+      return;
+    }
+    res.status(500).json({ error: "Failed to read log" });
   }
 });
 

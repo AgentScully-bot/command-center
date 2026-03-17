@@ -184,6 +184,21 @@ cmd_cleanup() {
   fi
 }
 
+cmd_reset() {
+  init_tracker
+  local now_ms
+  now_ms=$(($(date +%s) * 1000))
+
+  read_tracker | jq --argjson now "$now_ms" \
+    '(.agents[] | select(.status == "running")) |= (
+      .status = "stale" |
+      .completedAt = $now |
+      .error = "Reset: marked stale on server startup or manual reset"
+    )' | atomic_write
+
+  echo "All running agents marked as stale"
+}
+
 cmd_list() {
   init_tracker
   local data
@@ -215,8 +230,9 @@ case "${1:-}" in
   error)    shift; cmd_error "$@" ;;
   cleanup)  shift; cmd_cleanup ;;
   list)     shift; cmd_list ;;
+  reset)    shift; cmd_reset ;;
   *)
-    echo "Usage: track-agent.sh {start|complete|error|cleanup|list}" >&2
+    echo "Usage: track-agent.sh {start|complete|error|cleanup|list|reset}" >&2
     exit 1
     ;;
 esac

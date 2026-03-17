@@ -61,7 +61,7 @@ function formatDuration(ms?: number): string {
       <!-- History -->
       <div v-if="history.length" class="section-label">History</div>
       <div v-for="a in history" :key="a.sessionKey" class="agent-item-sm dimmed">
-        <span class="agent-dot done"></span>
+        <span class="agent-dot" :class="a.status === 'stale' ? 'stale' : 'done'"></span>
         <div class="agent-sm-info">
           <div class="agent-sm-task">{{ a.label }}</div>
           <div class="agent-sm-meta">
@@ -93,6 +93,7 @@ function formatDuration(ms?: number): string {
 .agent-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
 .agent-dot.running { background: var(--green); animation: pulse 2s infinite; }
 .agent-dot.done { background: var(--text-muted); }
+.agent-dot.stale { background: #f59e0b; }
 @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
 .agent-sm-info { flex: 1; min-width: 0; }
 .agent-sm-task { font-size: 11px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

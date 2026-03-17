@@ -63,6 +63,9 @@ const heartbeatTooltip = computed(() => {
 const showDone = ref(false)
 const viewingPrompt = ref('')
 const implementRequested = ref(false)
+const logLines = ref<string[]>([])
+const logVisible = ref(false)
+const logPolling = ref(false)
 
 // Add Feature state
 const showAddFeature = ref(false)
@@ -89,10 +92,34 @@ function isSectionCollapsed(section: string): boolean {
 async function requestImplementation() {
   if (implementRequested.value) return
   implementRequested.value = true
+  logLines.value = []
+  logVisible.value = true
   try {
     await fetch(`/api/projects/${props.projectId}/implement`, { method: 'POST' })
   } catch { /* button state still shows feedback */ }
   setTimeout(() => { implementRequested.value = false }, 3000)
+  startLogPolling()
+}
+
+function startLogPolling() {
+  if (logPolling.value) return
+  logPolling.value = true
+  const deadline = Date.now() + 30_000
+  let interval: ReturnType<typeof setInterval>
+  interval = setInterval(async () => {
+    if (Date.now() > deadline) {
+      clearInterval(interval)
+      logPolling.value = false
+      return
+    }
+    try {
+      const res = await fetch(`/api/projects/${props.projectId}/run-log`)
+      if (res.ok) {
+        const data = await res.json()
+        logLines.value = data.lines ?? []
+      }
+    } catch { /* ignore poll errors */ }
+  }, 2000)
 }
 
 function toKebab(name: string): string {
@@ -204,6 +231,19 @@ function pollDesignStatus() {
       :disabled="implementRequested"
       @click="requestImplementation"
     >{{ implementRequested ? 'Requested...' : `Start Implementation (${tasks.counts.approved} approved)` }}</button>
+
+    <!-- Run log panel -->
+    <div v-if="logVisible" class="run-log-panel" data-testid="run-log-panel">
+      <div class="run-log-header" @click="logVisible = !logVisible">
+        <span class="run-log-title">Implementation Log</span>
+        <span v-if="logPolling" class="run-log-polling">polling...</span>
+        <span class="run-log-toggle">{{ logVisible ? '▾' : '▸' }}</span>
+      </div>
+      <div class="run-log-body" data-testid="run-log-body">
+        <div v-if="logLines.length === 0" class="run-log-empty">Waiting for output...</div>
+        <div v-for="(line, i) in logLines" :key="i" class="run-log-line">{{ line }}</div>
+      </div>
+    </div>
 
     <!-- BLOCKED -->
     <div class="task-section" :class="{ 'section-collapsed-mobile': isSectionCollapsed('blocked') }" v-if="tasks.blocked.length > 0">
@@ -530,6 +570,27 @@ function pollDesignStatus() {
 .submit-btn { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 500; }
 .submit-btn:hover { opacity: 0.9; }
 .submit-btn:disabled { opacity: 0.4; cursor: default; }
+
+/* Run log panel */
+.run-log-panel {
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-primary);
+}
+.run-log-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 16px; background: var(--bg-tertiary);
+  cursor: pointer; font-size: 11px;
+}
+.run-log-header:hover { background: var(--bg-hover); }
+.run-log-title { font-weight: 600; color: var(--text-secondary); flex: 1; }
+.run-log-polling { font-size: 10px; color: var(--accent); }
+.run-log-toggle { font-size: 10px; color: var(--text-muted); }
+.run-log-body {
+  max-height: 180px; overflow-y: auto;
+  padding: 6px 16px; font-family: monospace; font-size: 10px; line-height: 1.5;
+}
+.run-log-empty { color: var(--text-muted); font-style: italic; padding: 4px 0; }
+.run-log-line { color: var(--text-secondary); white-space: pre-wrap; word-break: break-all; }
 
 /* Mobile implement button */
 .implement-btn-mobile {

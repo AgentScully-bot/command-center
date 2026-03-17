@@ -14,6 +14,7 @@ TASKS_FILE="$PROJECT_DIR/TASKS.md"
 PROMPTS_DIR="$PROJECT_DIR/prompts"
 TRACKER="$PROJECT_DIR/scripts/track-agent.sh"
 PROJECT_NAME="$(basename "$PROJECT_DIR")"
+LOG_FILE="/tmp/run-approved-${PROJECT_NAME}.log"
 
 DRY_RUN=false
 USE_GENERIC=false
@@ -25,6 +26,10 @@ while [[ $# -gt 0 ]]; do
     *) echo "Unknown option: $1" >&2; exit 1 ;;
   esac
 done
+
+# Set up logging — write timestamped run header, then tee all output to log file
+printf '\n=== run-approved %s ===\n' "$(date '+%Y-%m-%d %H:%M:%S')" >> "$LOG_FILE"
+exec > >(tee -a "$LOG_FILE") 2>&1
 
 if [[ ! -f "$TASKS_FILE" ]]; then
   echo "Error: TASKS.md not found at $TASKS_FILE" >&2

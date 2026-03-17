@@ -31,11 +31,7 @@ export function startWatchers() {
         })
       } catch { /* file might not exist */ }
 
-      // Watch agent-tracker.json
-      const trackerPath = path.join(PROJECTS_DIR, proj.name, 'scripts', 'agent-tracker.json')
-      try {
-        fs.watch(trackerPath, () => debouncedBroadcast('agents'))
-      } catch { /* file might not exist */ }
+      // (agent-tracker.json is watched globally below, not per-project)
     }
   } catch { /* projects dir might not exist */ }
 
@@ -52,10 +48,20 @@ export function startWatchers() {
   } catch { /* file might not exist */ }
 
   // Watch openclaw sessions.json for agent data
-  const sessionsPath = path.join(process.env.HOME || '', '.openclaw', 'sessions.json')
+  const sessionsPath = path.join(process.env.HOME || '', '.openclaw', 'agents', 'main', 'sessions', 'sessions.json')
   try {
     fs.watch(sessionsPath, () => debouncedBroadcast('agents'))
   } catch { /* file might not exist */ }
+
+  // Watch the actual agent-tracker.json used by track-agent.sh
+  const trackerPath = process.env.AGENT_TRACKER || path.join(
+    process.env.HOME || '',
+    'deployments/command-center/agent-tracker.json'
+  )
+  try {
+    fs.watch(trackerPath, () => debouncedBroadcast('agents'))
+    console.log(`[watcher] Watching agent tracker: ${trackerPath}`)
+  } catch { /* file might not exist yet */ }
 
   console.log('[watcher] File watchers started')
 }

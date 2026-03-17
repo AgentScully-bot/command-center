@@ -37,7 +37,7 @@ interface AgentEntry {
   updatedAt: number;
   startedAt?: number;
   duration?: number;
-  status: "running" | "completed" | "errored";
+  status: "running" | "completed" | "errored" | "stale";
   chatType: string;
   project?: string;
   pid?: number;
@@ -46,6 +46,7 @@ interface AgentEntry {
 
 // Check if a PID is still running
 function isProcessRunning(pid: number): boolean {
+  if (!pid || pid <= 0) return false;  // pid=0 signals the process group — never use it
   try {
     process.kill(pid, 0);
     return true;
@@ -104,15 +105,41 @@ agentsRouter.get("/", async (_req, res) => {
     try {
       const trackerData = JSON.parse(await fs.readFile(TRACKER_PATH, "utf-8"));
       if (trackerData.agents && Array.isArray(trackerData.agents)) {
+        const now = Date.now();
+        const FOUR_HOURS = 4 * 60 * 60 * 1000;
+        const EIGHT_HOURS = 8 * 60 * 60 * 1000;
+        const corrections: Array<{ id: string; status: string; completedAt: number; error?: string }> = [];
+
         for (const agent of trackerData.agents) {
-          // Check if PID is still running to update status
           let status: AgentEntry["status"] = agent.status || "completed";
-          if (status === "running" && agent.pid && !isProcessRunning(agent.pid)) {
-            status = "completed";
+          const startedAt = agent.startedAt || 0;
+          const age = now - startedAt;
+
+          if (status === "running") {
+            const pid: number | undefined = agent.pid;
+
+            // Correction 1: valid PID but process is dead
+            if (pid != null && pid > 0 && !isProcessRunning(pid)) {
+              status = "completed";
+              corrections.push({ id: agent.id, status: "completed", completedAt: now });
+            }
+            // Correction 2: no valid PID — age-based timeout
+            else if (pid == null || pid === 0) {
+              if (age >= FOUR_HOURS) {
+                status = "stale";
+                corrections.push({ id: agent.id, status: "stale", completedAt: now, error: "Auto-stale: no PID, age ≥ 4h" });
+              }
+              // else stay running
+            }
+
+            // Correction 3: any running entry older than 8h
+            if (status === "running" && age >= EIGHT_HOURS) {
+              status = "completed";
+              corrections.push({ id: agent.id, status: "completed", completedAt: now });
+            }
           }
 
-          const startedAt = agent.startedAt || 0;
-          const endedAt = agent.completedAt || Date.now();
+          const endedAt = agent.completedAt || now;
           const duration = startedAt ? endedAt - startedAt : undefined;
 
           agents.push({
@@ -134,46 +161,27 @@ agentsRouter.get("/", async (_req, res) => {
             source: "tracker",
           });
         }
+
+        // Write corrections back to disk atomically
+        if (corrections.length > 0) {
+          try {
+            const fresh = JSON.parse(await fs.readFile(TRACKER_PATH, "utf-8"));
+            const corrMap = new Map(corrections.map(c => [c.id, c]));
+            for (const a of fresh.agents) {
+              const corr = corrMap.get(a.id);
+              if (corr) {
+                a.status = corr.status;
+                a.completedAt = corr.completedAt;
+                if (corr.error) a.error = corr.error;
+              }
+            }
+            const tmpPath = TRACKER_PATH + ".tmp." + process.pid;
+            await fs.writeFile(tmpPath, JSON.stringify(fresh, null, 2));
+            await fs.rename(tmpPath, TRACKER_PATH);
+          } catch { /* best-effort write-back */ }
+        }
       }
     } catch { /* tracker may not exist */ }
-
-    // Also detect running claude processes as fallback
-    try {
-      const psOutput = await run("ps", ["aux"]);
-      const claudeProcs = psOutput.split("\n").filter(
-        (line) => line.includes("claude") && line.includes("-p") && !line.includes("grep")
-      );
-      for (const proc of claudeProcs) {
-        const parts = proc.trim().split(/\s+/);
-        const pid = parseInt(parts[1] || "0", 10);
-        // Skip if we already have this PID from tracker
-        if (agents.some((a) => a.pid === pid)) continue;
-
-        // Try to extract working directory from /proc
-        let project = "";
-        try {
-          const cwd = await fs.readlink(`/proc/${pid}/cwd`);
-          project = cwd.replace(/.*\/projects\//, "").split("/")[0] || cwd;
-        } catch { /* may not have access */ }
-
-        agents.push({
-          sessionKey: `process-${pid}`,
-          label: `Claude Code (PID ${pid})`,
-          model: "claude-code",
-          modelProvider: "anthropic",
-          inputTokens: 0,
-          outputTokens: 0,
-          cacheRead: 0,
-          totalTokens: 0,
-          updatedAt: Date.now(),
-          status: "running",
-          chatType: "coding",
-          project,
-          pid,
-          source: "tracker",
-        });
-      }
-    } catch { /* ps may fail */ }
 
     agents.sort((a, b) => b.updatedAt - a.updatedAt);
     res.json(agents);
