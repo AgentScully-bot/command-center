@@ -27,9 +27,9 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# Set up logging — write timestamped run header, then tee all output to log file
+# Set up logging — redirect all output to log file (no tee — survives detached execution)
 printf '\n=== run-approved %s ===\n' "$(date '+%Y-%m-%d %H:%M:%S')" >> "$LOG_FILE"
-exec > >(tee -a "$LOG_FILE") 2>&1
+exec >> "$LOG_FILE" 2>&1
 
 if [[ ! -f "$TASKS_FILE" ]]; then
   echo "Error: TASKS.md not found at $TASKS_FILE" >&2
@@ -232,69 +232,118 @@ while IFS= read -r feature; do
       --model "$MODEL_DISPLAY")
     echo "  Agent tracked: id=$AGENT_ID pid=$CODER_PID"
 
-    # Deploy + commit + push helper (sets DEPLOY_SUCCESS)
-    do_deploy_commit_push() {
-      DEPLOY_SUCCESS=true
+    # Verify → deploy → health-check → commit/push pipeline (sets PIPELINE_SUCCESS)
+    run_pipeline() {
+      PIPELINE_SUCCESS=true
+
       if [[ -f "$PROJECT_DIR/project.json" ]]; then
         AUTO_DEPLOY=$(python3 -c "import json; print(json.load(open('$PROJECT_DIR/project.json')).get('autoDeploy', False))" 2>/dev/null)
         if [[ "$AUTO_DEPLOY" == "True" ]] && [[ -f "$PROJECT_DIR/deploy.sh" ]]; then
-          echo "  Auto-deploying..."
-          if bash "$PROJECT_DIR/deploy.sh" 2>&1 | tee -a "/tmp/deploy-$PROJECT_NAME.log"; then
-            echo "  Deploy successful ✓"
-          else
-            DEPLOY_SUCCESS=false
-            echo "  Deploy failed — attempting auto-fix with Sonnet agent..."
 
-            FIX_PROMPT="$PROMPTS_DIR/fix-test-failures.md"
-            FIX_ATTEMPTED=false
-            FIX_SUCCESS=false
+          # 1. Verify (tests), with up to 2 fix attempts on failure
+          VERIFY_SUCCESS=false
+          FIX_ATTEMPTS=0
+          FIX_PROMPT="$PROMPTS_DIR/fix-test-failures.md"
 
-            if [[ -f "$FIX_PROMPT" ]]; then
-              FIX_ATTEMPTED=true
-
-              openclaw system event --text "🔧 Test failures after $feature ($PROJECT_NAME) — spawning fix agent" --mode now 2>/dev/null || true
-
-              FIX_AGENT_ID=$("$TRACKER" start \
-                --task "Fix test failures: $feature" \
-                --project "$PROJECT_NAME" \
-                --pid "$$" \
-                --model "Sonnet")
-
-              claude -p "$(cat "$FIX_PROMPT")" \
-                --model anthropic/claude-sonnet-4-6 \
-                --dangerously-skip-permissions \
-                --cwd "$PROJECT_DIR" &
-              FIX_PID=$!
-
-              if wait "$FIX_PID"; then
-                "$TRACKER" complete "$FIX_AGENT_ID" --summary "Fix agent ran for: $feature"
-                openclaw system event --text "🔧 Fix agent done for $feature — retrying deploy" --mode now 2>/dev/null || true
-
-                echo "  Fix agent completed — retrying deploy..."
-                if bash "$PROJECT_DIR/deploy.sh" 2>&1 | tee -a "/tmp/deploy-$PROJECT_NAME.log"; then
-                  DEPLOY_SUCCESS=true
-                  FIX_SUCCESS=true
-                  openclaw system event --text "✅ Deployed: $feature ($PROJECT_NAME) — fixed and deployed by remediation agent" --mode now 2>/dev/null || true
-                else
-                  "$TRACKER" error "$FIX_AGENT_ID" --message "Deploy still failing after fix attempt for: $feature"
-                  openclaw system event --text "❌ Test failures persist after fix attempt: $feature ($PROJECT_NAME) — needs manual review" --mode now 2>/dev/null || true
-                fi
-              else
-                "$TRACKER" error "$FIX_AGENT_ID" --message "Fix agent crashed for: $feature"
-                openclaw system event --text "❌ Fix agent crashed for $feature ($PROJECT_NAME) — needs manual review" --mode now 2>/dev/null || true
-              fi
+          while true; do
+            echo "  Running verify..."
+            if bash "$PROJECT_DIR/scripts/verify.sh"; then
+              VERIFY_SUCCESS=true
+              echo "  Verify passed ✓"
+              break
             fi
 
-            if ! $DEPLOY_SUCCESS; then
+            FIX_ATTEMPTS=$((FIX_ATTEMPTS + 1))
+            if [[ $FIX_ATTEMPTS -gt 2 ]]; then
+              echo "  Verify still failing after 2 fix attempts — blocking"
+              break
+            fi
+
+            if [[ ! -f "$FIX_PROMPT" ]]; then
+              echo "  No fix prompt found ($FIX_PROMPT) — blocking"
+              break
+            fi
+
+            echo "  Tests failed (fix attempt $FIX_ATTEMPTS/2) — spawning fix agent..."
+            TEST_OUTPUT=$(cat "$PROJECT_DIR/tests/last-run.json" 2>/dev/null || echo "{}")
+
+            openclaw system event --text "🔧 Test failures after $feature ($PROJECT_NAME) — spawning fix agent (attempt $FIX_ATTEMPTS/2)" --mode now 2>/dev/null || true
+
+            FIX_AGENT_ID=$("$TRACKER" start \
+              --task "Fix test failures: $feature (attempt $FIX_ATTEMPTS)" \
+              --project "$PROJECT_NAME" \
+              --pid "$$" \
+              --model "Sonnet")
+
+            FIX_CONTENT="$(cat "$FIX_PROMPT")
+\`\`\`json
+$TEST_OUTPUT
+\`\`\`"
+
+            claude -p "$FIX_CONTENT" \
+              --model claude-sonnet-4-6 \
+              --dangerously-skip-permissions \
+              --cwd "$PROJECT_DIR" &
+            FIX_PID=$!
+
+            if wait "$FIX_PID"; then
+              "$TRACKER" complete "$FIX_AGENT_ID" --summary "Fix agent ran for: $feature (attempt $FIX_ATTEMPTS)"
+              openclaw system event --text "🔧 Fix agent done for $feature — re-running verify" --mode now 2>/dev/null || true
+            else
+              "$TRACKER" error "$FIX_AGENT_ID" --message "Fix agent crashed for: $feature (attempt $FIX_ATTEMPTS)"
+              openclaw system event --text "❌ Fix agent crashed for $feature ($PROJECT_NAME) — blocking" --mode now 2>/dev/null || true
+              break
+            fi
+          done
+
+          if ! $VERIFY_SUCCESS; then
+            PIPELINE_SUCCESS=false
+            local date_stamp
+            date_stamp=$(date +%Y-%m-%d)
+            if grep -q "## 🔴 Blocked" "$TASKS_FILE" 2>/dev/null; then
+              sed -i "/## 🔴 Blocked/a\\- [ ] Tests failing for $feature — verify.sh blocked after $FIX_ATTEMPTS fix attempt(s) ($date_stamp) [waiting:owner]" "$TASKS_FILE"
+            else
+              printf '\n## 🔴 Blocked\n- [ ] Tests failing for %s — verify.sh blocked after %s fix attempt(s) (%s) [waiting:owner]\n' \
+                "$feature" "$FIX_ATTEMPTS" "$date_stamp" >> "$TASKS_FILE"
+            fi
+            openclaw system event --text "❌ Tests still failing for $feature ($PROJECT_NAME) after fix attempts — needs manual review" --mode now 2>/dev/null || true
+            return
+          fi
+
+          # 2. Deploy
+          echo "  Deploying..."
+          if ! bash "$PROJECT_DIR/deploy.sh" 2>&1 | tee -a "/tmp/deploy-$PROJECT_NAME.log"; then
+            PIPELINE_SUCCESS=false
+            local date_stamp
+            date_stamp=$(date +%Y-%m-%d)
+            if grep -q "## 🔴 Blocked" "$TASKS_FILE" 2>/dev/null; then
+              sed -i "/## 🔴 Blocked/a\\- [ ] Deploy failed for $feature — check /tmp/deploy-$PROJECT_NAME.log ($date_stamp) [waiting:owner]" "$TASKS_FILE"
+            else
+              printf '\n## 🔴 Blocked\n- [ ] Deploy failed for %s — check /tmp/deploy-%s.log (%s) [waiting:owner]\n' \
+                "$feature" "$PROJECT_NAME" "$date_stamp" >> "$TASKS_FILE"
+            fi
+            openclaw system event --text "❌ Deploy failed for $feature ($PROJECT_NAME) — needs manual review" --mode now 2>/dev/null || true
+            return
+          fi
+          echo "  Deploy successful ✓"
+
+          # 3. Health check
+          if [[ -f "$PROJECT_DIR/scripts/health-check.sh" ]]; then
+            echo "  Running health check..."
+            if ! bash "$PROJECT_DIR/scripts/health-check.sh"; then
+              PIPELINE_SUCCESS=false
               local date_stamp
               date_stamp=$(date +%Y-%m-%d)
               if grep -q "## 🔴 Blocked" "$TASKS_FILE" 2>/dev/null; then
-                sed -i "/## 🔴 Blocked/a\\- [ ] Deploy failed for $feature — check /tmp/deploy-$PROJECT_NAME.log ($date_stamp) [waiting:owner]" "$TASKS_FILE"
+                sed -i "/## 🔴 Blocked/a\\- [ ] Health check failed for $feature after deploy ($date_stamp) [waiting:owner]" "$TASKS_FILE"
               else
-                printf '\n## 🔴 Blocked\n- [ ] Deploy failed for %s — check /tmp/deploy-%s.log (%s) [waiting:owner]\n' \
-                  "$feature" "$PROJECT_NAME" "$date_stamp" >> "$TASKS_FILE"
+                printf '\n## 🔴 Blocked\n- [ ] Health check failed for %s after deploy (%s) [waiting:owner]\n' \
+                  "$feature" "$date_stamp" >> "$TASKS_FILE"
               fi
+              openclaw system event --text "❌ Health check failed for $feature ($PROJECT_NAME) after deploy — service may be down" --mode now 2>/dev/null || true
+              return
             fi
+            echo "  Health check passed ✓"
           fi
         fi
       fi
@@ -318,14 +367,14 @@ while IFS= read -r feature; do
     if wait "$CODER_PID"; then
       echo "  Agent completed successfully"
 
-      do_deploy_commit_push
+      run_pipeline
 
-      if $DEPLOY_SUCCESS; then
+      if $PIPELINE_SUCCESS; then
         "$TRACKER" complete "$AGENT_ID" --summary "Completed and deployed: $feature"
         openclaw system event --text "✅ Deployed: $feature ($PROJECT_NAME) — auto-deployed and pushed to GitHub" --mode now 2>/dev/null || true
       else
-        "$TRACKER" complete "$AGENT_ID" --summary "Completed but deploy failed: $feature"
-        openclaw system event --text "⚠️ Feature completed but deploy failed: $feature ($PROJECT_NAME) — check logs" --mode now 2>/dev/null || true
+        "$TRACKER" complete "$AGENT_ID" --summary "Completed but pipeline failed: $feature"
+        openclaw system event --text "⚠️ Feature completed but pipeline failed: $feature ($PROJECT_NAME) — check logs" --mode now 2>/dev/null || true
       fi
 
     else
@@ -353,7 +402,7 @@ while IFS= read -r feature; do
       if wait "$RETRY_PID"; then
         echo "  Retry succeeded"
 
-        do_deploy_commit_push
+        run_pipeline
 
         "$TRACKER" complete "$RETRY_ID" --summary "Completed on retry: $feature"
         openclaw system event --text "✅ Deployed: $feature ($PROJECT_NAME) — succeeded on retry" --mode now 2>/dev/null || true

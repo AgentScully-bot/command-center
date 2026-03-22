@@ -89,10 +89,11 @@ fi
 # Kick off the coder agent
 log_kickoff "Heartbeat auto-kickoff: spawning coder for approved tasks"
 
-# run-approved.sh runs in the foreground (it waits for the agent).
-# We run it in the background and record its PID in the lockfile.
-bash "$RUN_APPROVED" --use-generic &
+# run-approved.sh runs in background with nohup/setsid to survive parent death.
+# Without this, heartbeat session death kills the process group before commit/push.
+nohup setsid bash "$RUN_APPROVED" --use-generic </dev/null >> "/tmp/run-approved-${PROJECT_NAME}.log" 2>&1 &
 SPAWNED_PID=$!
+disown "$SPAWNED_PID" 2>/dev/null || true
 echo "$SPAWNED_PID" > "$LOCKFILE"
 
 echo "Auto-kickoff started: PID $SPAWNED_PID"
