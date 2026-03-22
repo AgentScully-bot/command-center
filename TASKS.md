@@ -1,9 +1,26 @@
 # TASKS.md — Command Center Dashboard
 
 ## 📋 Planned
-Features designed but not yet approved for implementation.
 
-Separate testing from deployment, add verify and health-check scripts, wire auto fix-agent.
+### Project Agents Panel Fix
+Fix "Agents on This Project" showing empty on project pages for ACP-spawned agents.
+- [ ] Infer project field for OpenClaw session agents (match label against known project dirs)
+- [ ] Raise HISTORY_LIMIT from 2 to 5 in ProjectAgentsPanel.vue
+- [ ] npm test + client build passes
+
+### Active Task Count Fix
+Show active task count instead of inflated total that includes Done tasks.
+- [ ] Add activeTotal field to counts (excludes Done)
+- [ ] Client displays activeTotal as primary ("X remaining") with done as secondary
+- [ ] npm test + client build passes
+
+### Task Section Parser Resilience
+Fix orphaned description lines inflating counts and breaking section transitions.
+- [ ] Parser skips orphaned text between ## section header and first ### feature heading
+- [ ] Capture feature descriptions (text between ### heading and first task line)
+- [ ] Approve endpoint moves full feature block (heading + description + tasks together)
+- [ ] Add tests for orphaned description handling
+- [ ] npm test + client build passes
 
 ## 🟢 Approved
 Ready for implementation — coder agent can pick these up.
