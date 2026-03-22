@@ -2,6 +2,14 @@
 
 ## 📋 Planned
 
+Fix "Agents on This Project" showing empty on project pages for ACP-spawned agents.
+
+Show active task count instead of inflated total that includes Done tasks.
+
+Fix orphaned description lines inflating counts and breaking section transitions.
+
+## 🟢 Approved
+
 ### Project Agents Panel Fix
 Fix "Agents on This Project" showing empty on project pages for ACP-spawned agents.
 - [ ] Infer project field for OpenClaw session agents (match label against known project dirs)
@@ -22,14 +30,28 @@ Fix orphaned description lines inflating counts and breaking section transitions
 - [ ] Add tests for orphaned description handling
 - [ ] npm test + client build passes
 
-## 🟢 Approved
-Ready for implementation — coder agent can pick these up.
 
 
 
 
 
 
+### Project Agents Panel Fix
+- [ ] Infer project field for OpenClaw session agents (match label against known project dirs)
+- [ ] Raise HISTORY_LIMIT from 2 to 5 in ProjectAgentsPanel.vue
+- [ ] npm test + client build passes
+
+### Active Task Count Fix
+- [ ] Add activeTotal field to counts (excludes Done)
+- [ ] Client displays activeTotal as primary ("X remaining") with done as secondary
+- [ ] npm test + client build passes
+
+### Task Section Parser Resilience
+- [ ] Parser skips orphaned text between ## section header and first ### feature heading
+- [ ] Capture feature descriptions (text between ### heading and first task line)
+- [ ] Approve endpoint moves full feature block (heading + description + tasks together)
+- [ ] Add tests for orphaned description handling
+- [ ] npm test + client build passes
 ## ✅ Done
 
 ### Replicate Build Pipeline
