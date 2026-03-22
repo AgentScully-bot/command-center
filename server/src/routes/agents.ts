@@ -183,6 +183,28 @@ agentsRouter.get("/", async (_req, res) => {
       }
     } catch { /* tracker may not exist */ }
 
+    // Infer project for agents that don't have one set
+    const projectsDir = path.join(process.env.HOME || "/tmp", "projects");
+    let knownProjects: string[] = [];
+    try {
+      const entries = await fs.readdir(projectsDir, { withFileTypes: true });
+      knownProjects = entries
+        .filter(e => e.isDirectory() && !e.name.startsWith("_") && !e.name.startsWith("."))
+        .map(e => e.name);
+    } catch { /* ok */ }
+
+    for (const a of agents) {
+      if (!a.project && a.label) {
+        const labelLower = a.label.toLowerCase();
+        for (const proj of knownProjects) {
+          if (labelLower.includes(proj)) {
+            a.project = proj;
+            break;
+          }
+        }
+      }
+    }
+
     agents.sort((a, b) => b.updatedAt - a.updatedAt);
     res.json(agents);
   } catch (err) {

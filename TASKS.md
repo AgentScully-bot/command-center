@@ -20,15 +20,15 @@ Fix orphaned description lines inflating counts and breaking section transitions
 
 ## 🟡 In Progress
 
-### Project Agents Panel Fix
-Fix "Agents on This Project" showing empty on project pages for ACP-spawned agents.
-- [ ] Infer project field for OpenClaw session agents (match label against known project dirs)
-- [ ] Raise HISTORY_LIMIT from 2 to 5 in ProjectAgentsPanel.vue
-- [ ] npm test + client build passes
-
 ---
 
 ## ✅ Done
+
+### Project Agents Panel Fix
+Fix "Agents on This Project" showing empty on project pages for ACP-spawned agents.
+- [x] Infer project field for OpenClaw session agents (match label against known project dirs) (2026-03-22)
+- [x] Raise HISTORY_LIMIT from 2 to 5 in ProjectAgentsPanel.vue (2026-03-22)
+- [x] npm test + client build passes (2026-03-22)
 
 ### Replicate Build Pipeline
 - [x] Create `_template/scripts/` with all 6 pipeline scripts (verify, health-check, run-approved, check-approved, track-agent, to-kebab) (2026-03-21)
