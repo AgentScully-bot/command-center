@@ -219,8 +219,10 @@ while IFS= read -r feature; do
     move_to_in_progress "$feature"
     echo "  Moved to In Progress in TASKS.md"
 
-    # Spawn the coder agent
+    # Spawn the coder agent (cd to project dir so agent works in the right place)
+    cd "$PROJECT_DIR"
     prompt_content=$(cat "$use_prompt")
+    cd "$PROJECT_DIR"
     claude -p "$prompt_content" $MODEL_FLAG --dangerously-skip-permissions &
     CODER_PID=$!
 
