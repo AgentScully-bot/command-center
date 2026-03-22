@@ -102,7 +102,9 @@ heartbeatRouter.get("/", async (_req, res) => {
       const configPath = path.join(OPENCLAW_DIR, "openclaw.json");
       const configContent = await fs.readFile(configPath, "utf-8");
       const config = JSON.parse(configContent);
-      const activeHours: ActiveHours | undefined = config?.heartbeat?.activeHours;
+      const activeHours: ActiveHours | undefined =
+        config?.agents?.defaults?.heartbeat?.activeHours ??
+        config?.heartbeat?.activeHours;
       if (activeHours?.start && activeHours?.end && activeHours?.timezone) {
         withinActiveHours = isWithinActiveHours(activeHours);
       }

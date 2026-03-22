@@ -44,7 +44,12 @@ const { secondsRemaining, isOverdue, withinActiveHours, lastFiredAt, nextExpecte
 const heartbeatLabel = computed(() => {
   if (!withinActiveHours.value) return '⏱ paused'
   if (secondsRemaining.value === null) return null
-  if (secondsRemaining.value <= 0) return '⏱ any moment'
+  if (secondsRemaining.value <= 0) {
+    const overdueSecs = Math.abs(secondsRemaining.value)
+    if (overdueSecs <= 120) return '⏱ any moment'
+    if (overdueSecs < 3600) return `⏱ ~${Math.round(overdueSecs / 60)}m overdue`
+    return `⏱ ~${Math.round(overdueSecs / 3600)}h overdue`
+  }
   if (secondsRemaining.value <= 60) return `⏱ ~${secondsRemaining.value}s`
   return `⏱ ~${Math.round(secondsRemaining.value / 60)}m`
 })

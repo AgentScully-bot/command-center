@@ -66,7 +66,7 @@ cronRouter.get("/", async (_req, res) => {
 
     // Also parse CLI output for extra status info
     try {
-      const cliOutput = await run("openclaw", ["cron", "list"]);
+      const cliOutput = await run("openclaw", ["cron", "list"], 3000);
       const lines = cliOutput.split("\n");
       for (const line of lines) {
         // Match table rows: ID Name Schedule Next Last Status

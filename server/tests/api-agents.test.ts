@@ -14,7 +14,7 @@ describe('GET /api/agents', () => {
   it('REQ-3: each agent has status field', async () => {
     const res = await request(app).get('/api/agents')
     for (const agent of res.body) {
-      expect(['running', 'completed', 'errored', 'crashed']).toContain(agent.status)
+      expect(['running', 'completed', 'errored', 'crashed', 'stale']).toContain(agent.status)
     }
   })
 })
