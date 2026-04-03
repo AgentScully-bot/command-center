@@ -1,10 +1,30 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 
-defineProps<{
-  waitingCount: number
-  projectCount: number
+const props = defineProps<{
+  projects: any[]
+  agents: any[]
 }>()
+
+const router = useRouter()
+const route = useRoute()
+
+const isDashboard = computed(() => route.path === '/')
+const activeProjectId = computed(() => route.params.id as string | undefined)
+
+function taskCount(project: any): number {
+  const t = project.tasks
+  if (!t) return 0
+  if (t.activeTotal != null) return t.activeTotal
+  return Math.max(0, (t.total || 0) - (t.done || 0))
+}
+
+function hasRunningAgent(project: any): boolean {
+  return props.agents.some(
+    (a) => a.project === project.id && (a.status === 'running' || a.status === 'completing')
+  )
+}
 
 interface ModelStatus {
   active: { model: string; alias: string }
@@ -57,14 +77,25 @@ onUnmounted(() => {
     <div class="sidebar-nav">
       <div class="nav-group">
         <div class="nav-label">Overview</div>
-        <div class="nav-item active"><span class="icon">&#9632;</span> Dashboard</div>
+        <div class="nav-item" :class="{ active: isDashboard }" @click="router.push('/')">
+          <span class="icon">&#9632;</span> Dashboard
+        </div>
       </div>
 
       <div class="nav-group">
-        <div class="nav-label">Work</div>
-        <div class="nav-item"><span class="icon">&#9654;</span> Projects <span v-if="projectCount" class="badge warn">{{ projectCount }}</span></div>
-        <div class="nav-item"><span class="icon">&#9733;</span> Ideas</div>
-        <div class="nav-item"><span class="icon">&#10003;</span> Tasks <span v-if="waitingCount" class="badge">{{ waitingCount }}</span></div>
+        <div class="nav-label">Projects</div>
+        <div
+          v-for="project in projects"
+          :key="project.id"
+          class="nav-item project-item"
+          :class="{ active: activeProjectId === project.id }"
+          @click="router.push('/project/' + project.id)"
+        >
+          <span class="running-dot" v-if="hasRunningAgent(project)"></span>
+          <span class="project-name">{{ project.name || project.id }}</span>
+          <span v-if="taskCount(project) > 0" class="badge">{{ taskCount(project) }}</span>
+        </div>
+        <div v-if="projects.length === 0" class="nav-empty">No projects</div>
       </div>
 
       <div class="nav-group">
@@ -111,7 +142,16 @@ onUnmounted(() => {
   margin-left: auto; font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 10px;
   background: var(--red); color: #fff; min-width: 18px; text-align: center;
 }
-.nav-item .badge.warn { background: var(--yellow); color: #000; }
+
+.project-item { font-size: 12px; padding: 5px 12px; }
+.project-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+
+.running-dot {
+  width: 5px; height: 5px; border-radius: 50%; background: var(--green); flex-shrink: 0;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.nav-empty { font-size: 11px; color: var(--text-muted); padding: 4px 12px; }
 
 .sidebar-footer { padding: 12px 16px; border-top: 1px solid var(--border); }
 .agent-row { display: flex; align-items: center; gap: 8px; cursor: default; }
@@ -121,6 +161,11 @@ onUnmounted(() => {
 .status-dot.unknown { background: var(--text-muted); }
 .agent-row .name { font-size: 12px; color: var(--text-secondary); }
 .agent-row .model { font-size: 10px; color: var(--text-muted); }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 4px rgba(52, 211, 153, 0.6); }
+  50% { opacity: 0.5; box-shadow: 0 0 8px rgba(52, 211, 153, 0.3); }
+}
 
 @media (max-width: 768px) {
   .sidebar { display: none; }

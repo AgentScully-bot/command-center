@@ -7,6 +7,7 @@ import { useApi } from './composables/useApi'
 const { data: system } = useApi<Record<string, unknown>>('/api/system')
 const { data: waiting } = useApi<unknown[]>('/api/waiting')
 const { data: projects } = useApi<unknown[]>('/api/projects')
+const { data: agents } = useApi<unknown[]>('/api/agents')
 
 function refreshAll() {
   window.location.reload()
@@ -15,7 +16,7 @@ function refreshAll() {
 
 <template>
   <div class="layout">
-    <Sidebar :waiting-count="(waiting as any[] || []).reduce((sum: number, g: any) => sum + (g.items?.length || 0), 0)" :project-count="projects?.length || 0" />
+    <Sidebar :projects="projects || []" :agents="agents || []" />
     <div class="main">
       <TopBar :system="system" @refresh="refreshAll" />
       <router-view />

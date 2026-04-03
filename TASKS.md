@@ -9,19 +9,20 @@
 
 ## 🟢 Approved
 
-### Sidebar Project Navigation
-Replace static sidebar with dynamic project list for one-click project switching.
-- [ ] Fetch projects and render as clickable nav items in Sidebar.vue
-- [ ] Wire up Vue Router navigation with active state highlighting
-- [ ] Pass project data from parent component
-- [ ] Remove unused static nav items
-- [ ] npm test + client build passes
 ## 🟡 In Progress
 
 
 ---
 
 ## ✅ Done
+
+### Sidebar Project Navigation
+Replace static sidebar with dynamic project list for one-click project switching.
+- [x] Fetch projects and render as clickable nav items in Sidebar.vue [2026-04-02]
+- [x] Wire up Vue Router navigation with active state highlighting [2026-04-02]
+- [x] Pass project data from parent component [2026-04-02]
+- [x] Remove unused static nav items [2026-04-02]
+- [x] npm test + client build passes [2026-04-02]
 
 ### Cron Schedule Display Fix
 Fix incorrect cron times by moving relative time calculation to client side.
