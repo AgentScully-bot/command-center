@@ -46,6 +46,7 @@ projectsRouter.get("/", async (_req, res) => {
           blocked: tasks.blocked,
           approved: tasks.approved,
           planned: tasks.planned,
+          activeTotal: tasks.activeTotal,
         },
         progress,
       });

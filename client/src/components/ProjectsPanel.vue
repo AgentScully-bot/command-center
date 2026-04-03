@@ -8,7 +8,7 @@ defineProps<{
 const router = useRouter()
 
 function proj(p: unknown) {
-  return p as { id: string; name: string; description: string; status: string; tasks: { total: number; done: number; blocked: number; inProgress: number; approved: number; planned: number }; progress: number }
+  return p as { id: string; name: string; description: string; status: string; tasks: { total: number; done: number; blocked: number; inProgress: number; approved: number; planned: number; activeTotal: number }; progress: number }
 }
 </script>
 
@@ -56,7 +56,8 @@ function proj(p: unknown) {
         </div>
         <span class="project-summary mobile-only">
           <template v-if="proj(p).status === 'paused'">paused</template>
-          <template v-else>{{ proj(p).tasks.done }} of {{ proj(p).tasks.total }} done</template>
+          <template v-else-if="proj(p).tasks.activeTotal > 0">{{ proj(p).tasks.activeTotal }} remaining</template>
+          <template v-else>{{ proj(p).tasks.done }} done</template>
         </span>
         <span v-if="proj(p).tasks.blocked" class="blocked-alert mobile-only">
           ⚠ {{ proj(p).tasks.blocked }} blocked

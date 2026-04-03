@@ -9,6 +9,7 @@ PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 TASKS_FILE="$PROJECT_DIR/TASKS.md"
 TRACKER="$PROJECT_DIR/scripts/track-agent.sh"
 RUN_APPROVED="$PROJECT_DIR/scripts/run-approved.sh"
+PROJECT_NAME="$(basename "$PROJECT_DIR")"
 LOCKFILE="/tmp/command-center-coder.lock"
 MEMORY_DIR="$PROJECT_DIR/memory"
 

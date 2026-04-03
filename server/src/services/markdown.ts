@@ -8,6 +8,7 @@ export interface TaskCounts {
   approved: number;
   planned: number;
   total: number;
+  activeTotal: number; // excludes Done
   items: TaskItem[];
 }
 
@@ -23,7 +24,7 @@ export async function parseTasksFile(filePath: string): Promise<TaskCounts> {
   try {
     content = await fs.readFile(filePath, "utf-8");
   } catch {
-    return { todo: 0, inProgress: 0, done: 0, blocked: 0, approved: 0, planned: 0, total: 0, items: [] };
+    return { todo: 0, inProgress: 0, done: 0, blocked: 0, approved: 0, planned: 0, total: 0, activeTotal: 0, items: [] };
   }
 
   const lines = content.split("\n");
@@ -66,7 +67,8 @@ export async function parseTasksFile(filePath: string): Promise<TaskCounts> {
   const blocked = items.filter((i) => i.section === "blocked").length;
   const todo = planned; // backwards compat
 
-  return { todo, inProgress, done, blocked, approved, planned, total: planned + approved + inProgress + done + blocked, items };
+  const activeTotal = planned + approved + inProgress + blocked;
+  return { todo, inProgress, done, blocked, approved, planned, total: planned + approved + inProgress + done + blocked, activeTotal, items };
 }
 
 export async function parseProjectMd(filePath: string): Promise<{ name: string; description: string; status: string }> {

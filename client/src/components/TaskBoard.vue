@@ -13,6 +13,7 @@ interface TaskItem {
 
 interface FeatureGroup {
   feature: string
+  description: string
   tasks: TaskItem[]
 }
 

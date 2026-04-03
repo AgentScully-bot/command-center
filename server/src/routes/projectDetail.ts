@@ -26,6 +26,7 @@ interface TaskItemDetail {
 
 interface FeatureGroup {
   feature: string;
+  description: string;
   tasks: TaskItemDetail[];
 }
 
@@ -68,7 +69,7 @@ function parseTaskLine(line: string, sectionName: string): TaskItemDetail | null
   return { text, done: isDone, waiting, blockReason, date };
 }
 
-async function parseTasksDetailed(filePath: string): Promise<TaskSections> {
+export async function parseTasksDetailed(filePath: string): Promise<TaskSections> {
   const sections: TaskSections = {
     blocked: [], inProgress: [], approved: [], planned: [], done: [],
     counts: { blocked: 0, inProgress: 0, approved: 0, planned: 0, done: 0, total: 0 },
@@ -84,11 +85,14 @@ async function parseTasksDetailed(filePath: string): Promise<TaskSections> {
   const lines = content.split("\n");
   let currentSection = "";
   let currentFeature = "";
-  // Map section name -> feature name -> tasks
-  const sectionMap: Record<string, Record<string, TaskItemDetail[]>> = {};
+  // Map section name -> feature name -> feature data
+  interface FeatureData { description: string; tasks: TaskItemDetail[] }
+  const sectionMap: Record<string, Record<string, FeatureData>> = {};
+  // Track per-feature whether we've seen the first task yet (for description capture)
+  const featureHasTask: Record<string, Record<string, boolean>> = {};
 
   for (const line of lines) {
-    // Detect ## section headers
+    // Detect ## section headers — orphaned text between here and first ### is skipped
     const h2 = line.match(/^##\s+(.+)/);
     if (h2) {
       const s = h2[1].toLowerCase();
@@ -99,7 +103,7 @@ async function parseTasksDetailed(filePath: string): Promise<TaskSections> {
       else if (s.includes("done")) currentSection = "done";
       else if (s.includes("todo")) currentSection = "todo";
       else currentSection = "";
-      currentFeature = "";
+      currentFeature = ""; // Reset: text before first ### is orphaned, skip it
       continue;
     }
 
@@ -111,16 +115,24 @@ async function parseTasksDetailed(filePath: string): Promise<TaskSections> {
       continue;
     }
 
-    if (!currentSection) continue;
+    if (!currentSection || !currentFeature) continue; // Skip orphaned text (no feature heading yet)
+
+    const sectionKey = currentSection === "todo" ? "planned" : currentSection;
+    if (!sectionMap[sectionKey]) sectionMap[sectionKey] = {};
+    if (!featureHasTask[sectionKey]) featureHasTask[sectionKey] = {};
+    if (!sectionMap[sectionKey][currentFeature]) {
+      sectionMap[sectionKey][currentFeature] = { description: "", tasks: [] };
+    }
 
     const task = parseTaskLine(line, currentSection);
     if (task) {
-      // Map "todo" section to "planned" for unified handling (old format)
-      const sectionKey = currentSection === "todo" ? "planned" : currentSection;
-      if (!sectionMap[sectionKey]) sectionMap[sectionKey] = {};
-      const feat = currentFeature || "General";
-      if (!sectionMap[sectionKey][feat]) sectionMap[sectionKey][feat] = [];
-      sectionMap[sectionKey][feat].push(task);
+      featureHasTask[sectionKey][currentFeature] = true;
+      sectionMap[sectionKey][currentFeature].tasks.push(task);
+    } else if (!featureHasTask[sectionKey][currentFeature] && line.trim() !== "") {
+      // Description line: non-empty, before first task in this feature
+      const existing = sectionMap[sectionKey][currentFeature].description;
+      sectionMap[sectionKey][currentFeature].description =
+        existing ? `${existing} ${line.trim()}` : line.trim();
     }
   }
 
@@ -128,9 +140,9 @@ async function parseTasksDetailed(filePath: string): Promise<TaskSections> {
   for (const sectionName of ["blocked", "inProgress", "approved", "planned", "done"] as const) {
     const featureMap = sectionMap[sectionName] || {};
     let count = 0;
-    for (const [feature, tasks] of Object.entries(featureMap)) {
-      sections[sectionName].push({ feature, tasks });
-      count += tasks.length;
+    for (const [feature, data] of Object.entries(featureMap)) {
+      sections[sectionName].push({ feature, description: data.description, tasks: data.tasks });
+      count += data.tasks.length;
     }
     sections.counts[sectionName] = count;
   }
@@ -342,123 +354,96 @@ projectDetailRouter.post("/:id/approve", async (req, res) => {
     const lines = content.split("\n");
     let inPlanned = false;
     let inApproved = false;
+    let inTargetFeature = false;
     let currentFeature = "";
     let approvedEndIdx = -1;
-    const linesToMove: number[] = [];
-    const featureHeadersToMove: number[] = [];
+    // Collects all line indices belonging to the feature block (heading + descriptions + tasks)
+    const blockLinesToMove: number[] = [];
 
-    // First pass: find lines to move and Approved section end
     for (let i = 0; i < lines.length; i++) {
       const h2 = lines[i].match(/^##\s+(.+)/);
       if (h2) {
         inPlanned = h2[1].includes("Planned");
         inApproved = h2[1].includes("Approved");
+        inTargetFeature = false;
         currentFeature = "";
         continue;
       }
 
       const h3 = lines[i].match(/^###\s+(.+)/);
       if (h3) {
+        inTargetFeature = false; // previous feature block ends
         currentFeature = h3[1].replace(/\s*\(\d{4}-\d{2}-\d{2}\)\s*$/, "").trim();
         if (inPlanned && feature && currentFeature === feature) {
-          featureHeadersToMove.push(i);
+          inTargetFeature = true;
+          blockLinesToMove.push(i); // include the ### heading
         }
-        continue;
+        continue; // don't update approvedEndIdx for ### lines
       }
 
-      if (inApproved && !lines[i].match(/^##\s+/)) {
+      if (inApproved) {
         approvedEndIdx = i + 1;
       }
 
-      if (inPlanned) {
-        const taskMatch = lines[i].match(/^- \[[ ]\]\s+(.+)/);
-        if (taskMatch) {
-          if (feature && currentFeature === feature) {
-            linesToMove.push(i);
-          } else if (task && taskMatch[1].trim() === task) {
-            linesToMove.push(i);
-          }
+      if (inTargetFeature) {
+        // Collect all non-blank lines: descriptions and tasks
+        if (lines[i].trim() !== "") {
+          blockLinesToMove.push(i);
+        }
+      } else if (inPlanned && task && !feature) {
+        // Single-task approval fallback (no feature heading supplied)
+        const taskMatch = lines[i].match(/^- \[ \]\s+(.+)/);
+        if (taskMatch && taskMatch[1].trim() === task) {
+          blockLinesToMove.push(i);
         }
       }
     }
 
-    if (linesToMove.length === 0) {
+    if (blockLinesToMove.length === 0) {
       res.status(404).json({ error: "No matching tasks found in Planned" });
       return;
     }
 
-    // Find where Approved section ends
+    // Find where Approved section ends if nothing was found during scan
     if (approvedEndIdx === -1) {
-      // Find the Approved header and set insert point right after
       for (let i = 0; i < lines.length; i++) {
         const h2 = lines[i].match(/^##\s+(.+)/);
         if (h2 && h2[1].includes("Approved")) {
           approvedEndIdx = i + 1;
-          // Skip description line and blank lines
-          while (approvedEndIdx < lines.length && !lines[approvedEndIdx].match(/^##\s+/) && !lines[approvedEndIdx].match(/^- \[/)) {
-            approvedEndIdx++;
-          }
           break;
         }
       }
     }
 
-    // Collect lines to move (including feature header if approving whole feature)
-    const taskLines = linesToMove.map(i => lines[i]);
-
-    // Check if approved section already has the feature header
-    let approvedHasFeature = false;
-    if (feature) {
-      for (let i = 0; i < lines.length; i++) {
-        const h2 = lines[i].match(/^##\s+(.+)/);
-        if (h2 && h2[1].includes("Approved")) {
-          for (let j = i + 1; j < lines.length; j++) {
-            if (lines[j].match(/^##\s+/)) break;
-            const h3 = lines[j].match(/^###\s+(.+)/);
-            if (h3 && h3[1].replace(/\s*\(\d{4}-\d{2}-\d{2}\)\s*$/, "").trim() === feature) {
-              approvedHasFeature = true;
-              // Insert after the last task in this feature group
-              approvedEndIdx = j + 1;
-              while (approvedEndIdx < lines.length && !lines[approvedEndIdx].match(/^##\s+/) && !lines[approvedEndIdx].match(/^###\s+/)) {
-                if (lines[approvedEndIdx].trim() === "") { approvedEndIdx++; continue; }
-                approvedEndIdx++;
-              }
-              break;
-            }
-          }
-          break;
-        }
-      }
+    if (approvedEndIdx === -1) {
+      res.status(404).json({ error: "No Approved section found" });
+      return;
     }
 
-    // Build insertion block
-    const insertLines: string[] = [];
-    if (feature && !approvedHasFeature) {
-      insertLines.push(`\n### ${feature}`);
-    }
-    insertLines.push(...taskLines);
+    const blockLines = blockLinesToMove.map(i => lines[i]);
+    const taskCount = blockLines.filter(l => l.match(/^- \[/)).length;
 
-    // Remove from planned (in reverse order to maintain indices)
-    const allToRemove = [...linesToMove, ...featureHeadersToMove].sort((a, b) => b - a);
-
-    // Check if removing these leaves the feature header orphaned
-    for (const idx of allToRemove) {
+    // Remove from Planned in reverse order to keep indices valid
+    for (const idx of [...blockLinesToMove].sort((a, b) => b - a)) {
       lines.splice(idx, 1);
     }
 
-    // Clean up empty feature headers in Planned that have no tasks left
-    // (re-scan after removal)
-
-    // Adjust insert index
-    let adjustedIdx = approvedEndIdx;
-    for (const idx of allToRemove) {
-      if (idx < approvedEndIdx) adjustedIdx--;
+    // Adjust insert position for the lines we just removed
+    let insertIdx = approvedEndIdx;
+    for (const idx of blockLinesToMove) {
+      if (idx < approvedEndIdx) insertIdx--;
     }
 
-    lines.splice(adjustedIdx, 0, ...insertLines);
+    // Add blank line separator before the block if needed
+    const insertBlock =
+      insertIdx > 0 && lines[insertIdx - 1]?.trim() !== ""
+        ? ["", ...blockLines]
+        : blockLines;
+
+    lines.splice(insertIdx, 0, ...insertBlock);
     await fs.writeFile(tasksPath, lines.join("\n"), "utf-8");
     broadcast('tasks'); broadcast('projects');
-    res.json({ ok: true, moved: taskLines.length });
+    res.json({ ok: true, moved: taskCount });
   } catch {
     res.status(500).json({ error: "Failed to approve" });
   }

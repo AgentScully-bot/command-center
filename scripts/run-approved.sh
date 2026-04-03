@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+export PATH="$HOME/.local/bin:$HOME/.npm-global/bin:$PATH"
 
 # run-approved.sh — Find approved features in TASKS.md, match to prompt files, spawn coder agent
 #
