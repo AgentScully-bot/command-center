@@ -3,6 +3,20 @@
 
 ## ✅ Done
 
+### Active Task Count Fix
+Show active task count instead of inflated total that includes Done tasks.
+- [x] Add activeTotal field to counts (excludes Done) (2026-04-02)
+- [x] Client displays activeTotal as primary ("X remaining") with done as secondary (2026-04-02)
+- [x] npm test + client build passes (2026-04-02)
+
+### Task Section Parser Resilience
+Fix orphaned description lines inflating counts and breaking section transitions.
+- [x] Parser skips orphaned text between ## section header and first ### feature heading (2026-04-02)
+- [x] Capture feature descriptions (text between ### heading and first task line) (2026-04-02)
+- [x] Approve endpoint moves full feature block (heading + description + tasks together) (2026-04-02)
+- [x] Add tests for orphaned description handling (2026-04-02)
+- [x] npm test + client build passes (2026-04-02)
+
 ### Project Agents Panel Fix (2026-03-22)
 Fix "Agents on This Project" showing empty on project pages for ACP-spawned agents.
 - [x] Infer project field for OpenClaw session agents (match label against known project dirs) (2026-03-22)
