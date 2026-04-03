@@ -2,12 +2,12 @@
 
 ## 📋 Planned
 
-### Realtime UI Reactivity
-Fix Start Implementation button not updating UI and new tasks/prompts not appearing without refresh.
-- [ ] Emit refresh after requestImplementation fetch succeeds (TaskBoard.vue)
-- [ ] Add file watchers for prompts/ and requirements/ directories (watcher.ts)
-- [ ] Verify WebSocket channel mapping covers all project data endpoints
-- [ ] npm test + client build passes
+
+
+
+
+
+## 🟢 Approved
 
 ### Implementation Log Redesign
 Make implementation log a permanent sidebar tab with live output and clear design.
@@ -39,14 +39,18 @@ Replace static sidebar with dynamic project list for one-click project switching
 - [ ] Pass project data from parent component
 - [ ] Remove unused static nav items
 - [ ] npm test + client build passes
-
-## 🟢 Approved
-
 ## 🟡 In Progress
 
 ---
 
 ## ✅ Done
+
+### Realtime UI Reactivity
+Fix Start Implementation button not updating UI and new tasks/prompts not appearing without refresh.
+- [x] Emit refresh after requestImplementation fetch succeeds (TaskBoard.vue) [2026-04-02]
+- [x] Add file watchers for prompts/ and requirements/ directories (watcher.ts) [2026-04-02]
+- [x] Verify WebSocket channel mapping covers all project data endpoints [2026-04-02]
+- [x] npm test + client build passes [2026-04-02]
 
 _See [TASKS-DONE.md](TASKS-DONE.md) for completed work._
 

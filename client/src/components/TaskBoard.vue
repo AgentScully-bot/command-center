@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import PromptViewer from './PromptViewer.vue'
 import { useHeartbeatStatus } from '../composables/useHeartbeatStatus'
 
@@ -69,6 +69,13 @@ const heartbeatTooltip = computed(() => {
 const showDone = ref(false)
 const viewingPrompt = ref('')
 const implementRequested = ref(false)
+
+// Reset button when parent re-fetches after refresh emit or WS update
+watch(() => props.tasks, () => {
+  if (implementRequested.value) {
+    implementRequested.value = false
+  }
+})
 const logLines = ref<string[]>([])
 const logVisible = ref(false)
 const logPolling = ref(false)
@@ -102,8 +109,8 @@ async function requestImplementation() {
   logVisible.value = true
   try {
     await fetch(`/api/projects/${props.projectId}/implement`, { method: 'POST' })
+    emit('refresh')
   } catch { /* button state still shows feedback */ }
-  setTimeout(() => { implementRequested.value = false }, 3000)
   startLogPolling()
 }
 

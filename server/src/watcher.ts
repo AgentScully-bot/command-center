@@ -31,6 +31,18 @@ export function startWatchers() {
         })
       } catch { /* file might not exist */ }
 
+      try {
+        fs.watch(path.join(PROJECTS_DIR, proj.name, 'prompts'), { recursive: false }, () => {
+          debouncedBroadcast('tasks')
+        })
+      } catch { /* dir might not exist */ }
+
+      try {
+        fs.watch(path.join(PROJECTS_DIR, proj.name, 'requirements'), { recursive: false }, () => {
+          debouncedBroadcast('tasks')
+        })
+      } catch { /* dir might not exist */ }
+
       // (agent-tracker.json is watched globally below, not per-project)
     }
   } catch { /* projects dir might not exist */ }
