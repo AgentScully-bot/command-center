@@ -1,14 +1,36 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 
 defineProps<{
   jobs: unknown[]
 }>()
 
 const runningId = ref<string | null>(null)
+const now = ref(Date.now())
+let ticker: ReturnType<typeof setInterval> | null = null
+
+onMounted(() => { ticker = setInterval(() => { now.value = Date.now() }, 60000) })
+onUnmounted(() => { if (ticker) clearInterval(ticker) })
 
 function job(j: unknown) {
-  return j as { id: string; name: string; schedule: string; lastRun: string; lastStatus: string; nextRun: string; enabled: boolean }
+  return j as { id: string; name: string; schedule: string; nextRunAt: number | null; lastRunAt: number | null; lastStatus: string; enabled: boolean }
+}
+
+function formatRelative(ts: number | null, direction: 'past' | 'future'): string {
+  if (ts === null) return '—'
+  const diff = direction === 'future' ? ts - now.value : now.value - ts
+  if (direction === 'future' && diff < 0) {
+    const over = -diff
+    const h = Math.floor(over / 3600000)
+    const m = Math.floor((over % 3600000) / 60000)
+    return h > 0 ? `Overdue ${h}h ${m}m` : `Overdue ${m}m`
+  }
+  const days = Math.floor(diff / 86400000)
+  const hours = Math.floor((diff % 86400000) / 3600000)
+  const mins = Math.floor((diff % 3600000) / 60000)
+  if (days > 0) return direction === 'future' ? `in ${days}d` : `${days}d ago`
+  if (hours > 0) return direction === 'future' ? `in ${hours}h ${mins}m` : `${hours}h ago`
+  return direction === 'future' ? `in ${mins}m` : `${mins}m ago`
 }
 
 async function runNow(id: string) {
@@ -38,9 +60,9 @@ async function runNow(id: string) {
         <span class="cron-name">{{ job(j).name }}</span>
         <span class="cron-schedule">{{ job(j).schedule }}</span>
         <span class="cron-last" :style="{ color: job(j).lastStatus === 'error' ? 'var(--yellow)' : 'var(--text-muted)' }">
-          {{ job(j).lastStatus === 'error' ? 'Failed' : job(j).lastRun }}
+          {{ job(j).lastStatus === 'error' ? 'Failed' : formatRelative(job(j).lastRunAt, 'past') }}
         </span>
-        <span class="cron-next">{{ job(j).nextRun }}</span>
+        <span class="cron-next">{{ formatRelative(job(j).nextRunAt, 'future') }}</span>
         <span class="cron-status" :class="job(j).lastStatus === 'error' ? 'warn' : 'ok'"></span>
         <button class="btn btn-action" :disabled="runningId === job(j).id" @click="runNow(job(j).id)">
           {{ runningId === job(j).id ? '...' : 'Run Now' }}

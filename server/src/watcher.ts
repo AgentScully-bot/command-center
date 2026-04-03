@@ -75,5 +75,11 @@ export function startWatchers() {
     console.log(`[watcher] Watching agent tracker: ${trackerPath}`)
   } catch { /* file might not exist yet */ }
 
+  // Watch cron jobs.json for schedule/state changes
+  const cronJobsPath = path.join(process.env.HOME || '', '.openclaw', 'cron', 'jobs.json')
+  try {
+    fs.watch(cronJobsPath, () => debouncedBroadcast('cron'))
+  } catch { /* file might not exist */ }
+
   console.log('[watcher] File watchers started')
 }

@@ -10,9 +10,9 @@ interface CronJob {
   id: string;
   name: string;
   schedule: string;
-  lastRun: string;
+  nextRunAt: number | null;
+  lastRunAt: number | null;
   lastStatus: string;
-  nextRun: string;
   enabled: boolean;
 }
 
@@ -31,15 +31,17 @@ cronRouter.get("/", async (_req, res) => {
     } catch { /* no runs dir */ }
 
     // Build last-run map from run files
-    const lastRunMap = new Map<string, { status: string; time: string }>();
+    const lastRunMap = new Map<string, { status: string; timeMs: number | null }>();
     for (const rf of runFiles.sort().reverse()) {
       try {
         const runData = JSON.parse(await fs.readFile(path.join(runsDir, rf), "utf-8"));
         const jobId = runData.jobId || runData.id;
         if (jobId && !lastRunMap.has(jobId)) {
+          const tsStr = runData.ts || runData.startedAt || null;
+          const timeMs = tsStr ? new Date(tsStr).getTime() : null;
           lastRunMap.set(jobId, {
             status: runData.error ? "error" : "ok",
-            time: runData.ts || runData.startedAt || rf.replace(".json", ""),
+            timeMs: isNaN(timeMs as number) ? null : timeMs,
           });
         }
       } catch { /* skip bad files */ }
@@ -47,19 +49,17 @@ cronRouter.get("/", async (_req, res) => {
 
     for (const job of jobsData.jobs || []) {
       const schedExpr = job.schedule?.expr || (job.schedule?.at ? `at ${job.schedule.at}` : "unknown");
-      const nextRunMs = job.state?.nextRunAtMs;
-      const nextRun = nextRunMs ? formatRelativeTime(nextRunMs) : "—";
+      const nextRunAt: number | null = job.state?.nextRunAtMs ?? null;
 
-      // Check CLI output for last run
       const lastRun = lastRunMap.get(job.id);
 
       jobs.push({
         id: job.id,
         name: job.name || "unnamed",
         schedule: formatSchedule(schedExpr, job.schedule),
-        lastRun: lastRun?.time ? formatTimeShort(lastRun.time) : "—",
+        nextRunAt,
+        lastRunAt: lastRun?.timeMs ?? null,
         lastStatus: lastRun?.status || (job.state?.lastError ? "error" : "ok"),
-        nextRun,
         enabled: job.enabled !== false,
       });
     }
@@ -93,25 +93,4 @@ function formatSchedule(expr: string, schedule: { kind: string; at?: string; exp
   return expr;
 }
 
-function formatRelativeTime(ms: number): string {
-  const diff = ms - Date.now();
-  if (diff < 0) return "Overdue";
-  const hours = Math.floor(diff / 3600000);
-  const days = Math.floor(diff / 86400000);
-  if (days > 0) return `in ${days}d`;
-  if (hours > 0) return `in ${hours}h`;
-  return `in ${Math.floor(diff / 60000)}m`;
-}
 
-function formatTimeShort(ts: string): string {
-  try {
-    const d = new Date(ts);
-    const now = new Date();
-    const diff = now.getTime() - d.getTime();
-    const hours = Math.floor(diff / 3600000);
-    if (hours < 24) return `${hours}h ago`;
-    return `${Math.floor(hours / 24)}d ago`;
-  } catch {
-    return ts;
-  }
-}

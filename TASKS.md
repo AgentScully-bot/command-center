@@ -9,13 +9,6 @@
 
 ## 🟢 Approved
 
-### Cron Schedule Display Fix
-Fix incorrect cron times by moving relative time calculation to client side.
-- [ ] Send raw UTC timestamps from server instead of pre-formatted strings
-- [ ] Add client-side relative time formatting with 60-second tick
-- [ ] Add watcher on jobs.json for WebSocket cron channel updates
-- [ ] npm test + client build passes
-
 ### Sidebar Project Navigation
 Replace static sidebar with dynamic project list for one-click project switching.
 - [ ] Fetch projects and render as clickable nav items in Sidebar.vue
@@ -29,6 +22,13 @@ Replace static sidebar with dynamic project list for one-click project switching
 ---
 
 ## ✅ Done
+
+### Cron Schedule Display Fix
+Fix incorrect cron times by moving relative time calculation to client side.
+- [x] Send raw UTC timestamps from server instead of pre-formatted strings [2026-04-02]
+- [x] Add client-side relative time formatting with 60-second tick [2026-04-02]
+- [x] Add watcher on jobs.json for WebSocket cron channel updates [2026-04-02]
+- [x] npm test + client build passes [2026-04-02]
 
 ### Agent Status Accuracy
 Fix agent panel to auto-update, show live duration, and handle state transitions properly.
