@@ -19,7 +19,7 @@ function refreshAll() {
     <Sidebar :projects="projects || []" :agents="agents || []" />
     <div class="main">
       <TopBar :system="system" @refresh="refreshAll" />
-      <router-view />
+      <router-view :key="$route.fullPath" />
     </div>
     <BottomNav :waiting-count="(waiting as any[] || []).reduce((sum: number, g: any) => sum + (g.items?.length || 0), 0)" />
   </div>
