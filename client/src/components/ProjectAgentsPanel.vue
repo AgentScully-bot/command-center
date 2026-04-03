@@ -1,18 +1,40 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch, onUnmounted } from 'vue'
 
 const props = defineProps<{ agents: any[] }>()
+const emit = defineEmits<{ (e: 'refresh'): void }>()
 
 const HISTORY_LIMIT = 5
 
-const active = computed(() => props.agents.filter((a: any) => a.status === 'running'))
+const active = computed(() => props.agents.filter((a: any) => a.status === 'running' || a.status === 'completing'))
 const history = computed(() => {
-  const finished = props.agents.filter((a: any) => a.status !== 'running')
+  const finished = props.agents.filter((a: any) => a.status !== 'running' && a.status !== 'completing')
   return finished.slice(0, HISTORY_LIMIT)
 })
 const hiddenCount = computed(() => {
-  const total = props.agents.filter((a: any) => a.status !== 'running').length
+  const total = props.agents.filter((a: any) => a.status !== 'running' && a.status !== 'completing').length
   return Math.max(0, total - HISTORY_LIMIT)
+})
+
+// Live clock for duration counters
+const now = ref(Date.now())
+const clockTimer = setInterval(() => { now.value = Date.now() }, 1000)
+
+// Supplemental poll while agents are running
+let pollTimer: ReturnType<typeof setInterval> | null = null
+const hasRunning = computed(() => active.value.length > 0)
+watch(hasRunning, (val) => {
+  if (val && !pollTimer) {
+    pollTimer = setInterval(() => emit('refresh'), 10000)
+  } else if (!val && pollTimer) {
+    clearInterval(pollTimer)
+    pollTimer = null
+  }
+}, { immediate: true })
+
+onUnmounted(() => {
+  clearInterval(clockTimer)
+  if (pollTimer) clearInterval(pollTimer)
 })
 
 function formatTime(ts: number): string {
@@ -36,6 +58,18 @@ function formatDuration(ms?: number): string {
   const remainMins = mins % 60
   return `${hrs}h ${remainMins}m`
 }
+
+function liveDurationMs(a: any): number | undefined {
+  if ((a.status === 'running' || a.status === 'completing') && a.startedAt) {
+    return now.value - a.startedAt
+  }
+  return a.duration
+}
+
+function statusLabel(a: any): string {
+  if (a.status === 'completing') return 'testing & deploying'
+  return a.status
+}
 </script>
 
 <template>
@@ -51,8 +85,8 @@ function formatDuration(ms?: number): string {
         <div class="agent-sm-info">
           <div class="agent-sm-task">{{ a.label }}</div>
           <div class="agent-sm-meta">
-            {{ a.model }} &middot; running
-            <span v-if="formatDuration(a.duration)" class="duration">&middot; {{ formatDuration(a.duration) }}</span>
+            {{ a.model }} &middot; {{ statusLabel(a) }}
+            <span v-if="formatDuration(liveDurationMs(a))" class="duration">&middot; {{ formatDuration(liveDurationMs(a)) }}</span>
           </div>
         </div>
         <div class="agent-sm-time">{{ formatTime(a.updatedAt) }}</div>

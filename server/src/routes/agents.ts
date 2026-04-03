@@ -37,7 +37,7 @@ interface AgentEntry {
   updatedAt: number;
   startedAt?: number;
   duration?: number;
-  status: "running" | "completed" | "errored" | "stale";
+  status: "running" | "completed" | "errored" | "stale" | "completing";
   chatType: string;
   project?: string;
   pid?: number;
@@ -50,6 +50,33 @@ function isProcessRunning(pid: number): boolean {
   try {
     process.kill(pid, 0);
     return true;
+  } catch {
+    return false;
+  }
+}
+
+// Check if all checkboxes in a feature section of TASKS.md are marked done
+async function isTaskCompleted(projectName: string, taskName: string): Promise<boolean> {
+  if (!projectName || !taskName) return false;
+  try {
+    const tasksPath = path.join(process.env.HOME || "/tmp", "projects", projectName, "TASKS.md");
+    const content = await fs.readFile(tasksPath, "utf-8");
+    const lines = content.split("\n");
+    let inSection = false;
+    let hasCheckboxes = false;
+    const taskLower = taskName.toLowerCase();
+    for (const line of lines) {
+      if (line.startsWith("### ") && line.slice(4).toLowerCase().includes(taskLower)) {
+        inSection = true;
+        continue;
+      }
+      if (inSection && line.startsWith("### ")) break;
+      if (inSection) {
+        if (/^- \[ \]/.test(line)) return false;
+        if (/^- \[x\]/i.test(line)) hasCheckboxes = true;
+      }
+    }
+    return inSection && hasCheckboxes;
   } catch {
     return false;
   }
@@ -123,7 +150,15 @@ agentsRouter.get("/", async (_req, res) => {
               status = "completed";
               corrections.push({ id: agent.id, status: "completed", completedAt: now });
             }
-            // Correction 2: no valid PID — age-based timeout
+            // Correction 2: valid PID, process alive — check if in completing phase
+            else if (pid != null && pid > 0) {
+              const projName: string | undefined = agent.project;
+              const taskName: string | undefined = agent.task;
+              if (projName && taskName && await isTaskCompleted(projName, taskName)) {
+                status = "completing";
+              }
+            }
+            // Correction 3: no valid PID — age-based timeout
             else if (pid == null || pid === 0) {
               if (age >= FOUR_HOURS) {
                 status = "stale";
@@ -132,8 +167,8 @@ agentsRouter.get("/", async (_req, res) => {
               // else stay running
             }
 
-            // Correction 3: any running entry older than 8h
-            if (status === "running" && age >= EIGHT_HOURS) {
+            // Correction 4: any running entry older than 8h
+            if ((status === "running" || status === "completing") && age >= EIGHT_HOURS) {
               status = "completed";
               corrections.push({ id: agent.id, status: "completed", completedAt: now });
             }

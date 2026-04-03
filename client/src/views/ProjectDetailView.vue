@@ -17,7 +17,7 @@ const router = useRouter()
 const id = computed(() => route.params.id as string)
 
 const { data: project, refresh } = useApi<Record<string, any>>(`/api/projects/${id.value}`)
-const { data: agents } = useApi<any[]>('/api/agents')
+const { data: agents, refresh: refreshAgents } = useApi<any[]>('/api/agents')
 const { data: git } = useApi<Record<string, any>>(`/api/projects/${id.value}/git`)
 const { data: activity } = useApi<any[]>(`/api/projects/${id.value}/activity`)
 const { data: prompts } = useApi<any[]>(`/api/projects/${id.value}/prompts`)
@@ -215,7 +215,7 @@ async function deploy() {
 
           <!-- Desktop: show all, Mobile: show selected -->
           <ProjectWaitingPanel v-show="activeSideTab === 'waiting'" class="side-panel" :items="waitingItems" />
-          <ProjectAgentsPanel v-show="activeSideTab === 'agents'" class="side-panel" :agents="projectAgents" />
+          <ProjectAgentsPanel v-show="activeSideTab === 'agents'" class="side-panel" :agents="projectAgents" @refresh="refreshAgents" />
           <ProjectGitPanel v-show="activeSideTab === 'git'" class="side-panel" :git="git as any" />
           <DecisionsPanel v-show="activeSideTab === 'decisions'" class="side-panel" :decisions="project.decisions || []" />
           <ProjectActivityPanel v-show="activeSideTab === 'activity'" class="side-panel" :activity="activity || []" />

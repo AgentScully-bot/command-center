@@ -9,14 +9,6 @@
 
 ## 🟢 Approved
 
-### Agent Status Accuracy
-Fix agent panel to auto-update, show live duration, and handle state transitions properly.
-- [ ] Add live duration counter with 1-second tick for running agents
-- [ ] Add supplemental 10-second polling while agents are running
-- [ ] Verify WebSocket agents channel subscription works end-to-end
-- [ ] Add completing status for agents in test/deploy phase
-- [ ] npm test + client build passes
-
 ### Cron Schedule Display Fix
 Fix incorrect cron times by moving relative time calculation to client side.
 - [ ] Send raw UTC timestamps from server instead of pre-formatted strings
@@ -37,6 +29,14 @@ Replace static sidebar with dynamic project list for one-click project switching
 ---
 
 ## ✅ Done
+
+### Agent Status Accuracy
+Fix agent panel to auto-update, show live duration, and handle state transitions properly.
+- [x] Add live duration counter with 1-second tick for running agents [2026-04-02]
+- [x] Add supplemental 10-second polling while agents are running [2026-04-02]
+- [x] Verify WebSocket agents channel subscription works end-to-end [2026-04-02]
+- [x] Add completing status for agents in test/deploy phase [2026-04-02]
+- [x] npm test + client build passes [2026-04-02]
 
 ### Implementation Log Redesign
 Make implementation log a permanent sidebar tab with live output and clear design.
