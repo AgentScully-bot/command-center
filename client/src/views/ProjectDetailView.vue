@@ -110,11 +110,9 @@ const activeSideTab = ref('waiting')
 const sideTabs = [
   { key: 'waiting', label: 'Waiting' },
   { key: 'agents', label: 'Agents' },
-  { key: 'git', label: 'Git' },
+  { key: 'git', label: 'Git & Deploys' },
   { key: 'decisions', label: 'Decisions' },
   { key: 'activity', label: 'Activity' },
-  { key: 'log', label: 'Log' },
-  { key: 'deploys', label: 'Deploys' },
 ]
 
 async function deploy() {
@@ -191,15 +189,18 @@ async function deploy() {
       </div>
 
       <div class="project-grid">
-        <TaskBoard
-          :tasks="project.tasks"
-          :project-id="id"
-          :prompts="prompts || []"
-          @delete-task="deleteTask"
-          @approve-feature="approveFeature"
-          @refresh="refresh"
-          @toast="showToast"
-        />
+        <div class="main-panels">
+          <TaskBoard
+            :tasks="project.tasks"
+            :project-id="id"
+            :prompts="prompts || []"
+            @delete-task="deleteTask"
+            @approve-feature="approveFeature"
+            @refresh="refresh"
+            @toast="showToast"
+          />
+          <ImplementationLogPanel :project-id="id" :agents="projectAgents" />
+        </div>
 
         <div class="sidebar-panels">
           <!-- Mobile tab bar -->
@@ -217,10 +218,9 @@ async function deploy() {
           <ProjectWaitingPanel v-show="activeSideTab === 'waiting'" class="side-panel" :items="waitingItems" />
           <ProjectAgentsPanel v-show="activeSideTab === 'agents'" class="side-panel" :agents="projectAgents" @refresh="refreshAgents" />
           <ProjectGitPanel v-show="activeSideTab === 'git'" class="side-panel" :git="git as any" />
+          <ProjectDeploymentsPanel v-show="activeSideTab === 'git'" class="side-panel" :deploys="deployInfo as any" />
           <DecisionsPanel v-show="activeSideTab === 'decisions'" class="side-panel" :decisions="project.decisions || []" />
           <ProjectActivityPanel v-show="activeSideTab === 'activity'" class="side-panel" :activity="activity || []" />
-          <ImplementationLogPanel v-show="activeSideTab === 'log'" class="side-panel" :project-id="id" :agents="projectAgents" />
-          <ProjectDeploymentsPanel v-show="activeSideTab === 'deploys'" class="side-panel" :deploys="deployInfo as any" />
         </div>
       </div>
     </div>
@@ -307,6 +307,7 @@ async function deploy() {
 .meta-inline { color: var(--text-muted); }
 
 .project-grid { display: grid; grid-template-columns: 1fr 340px; gap: 16px; }
+.main-panels { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .sidebar-panels { display: flex; flex-direction: column; gap: 12px; }
 
 /* Side tab bar (mobile only) */
