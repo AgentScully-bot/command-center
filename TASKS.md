@@ -9,14 +9,6 @@
 
 ## 🟢 Approved
 
-### Implementation Log Redesign
-Make implementation log a permanent sidebar tab with live output and clear design.
-- [ ] Create ImplementationLogPanel.vue component with terminal-style output
-- [ ] Add Log tab to ProjectDetailView sidebar tabs
-- [ ] Remove inline log from TaskBoard.vue
-- [ ] Auto-poll while agent running, show last run when idle
-- [ ] npm test + client build passes
-
 ### Agent Status Accuracy
 Fix agent panel to auto-update, show live duration, and handle state transitions properly.
 - [ ] Add live duration counter with 1-second tick for running agents
@@ -41,9 +33,19 @@ Replace static sidebar with dynamic project list for one-click project switching
 - [ ] npm test + client build passes
 ## 🟡 In Progress
 
+
 ---
 
 ## ✅ Done
+
+### Implementation Log Redesign
+Make implementation log a permanent sidebar tab with live output and clear design.
+- [x] Create ImplementationLogPanel.vue component with terminal-style output [2026-04-02]
+- [x] Add Log tab to ProjectDetailView sidebar tabs [2026-04-02]
+- [x] Remove inline log from TaskBoard.vue [2026-04-02]
+- [x] Auto-poll while agent running, show last run when idle [2026-04-02]
+- [x] npm test + client build passes [2026-04-02]
+
 
 ### Realtime UI Reactivity
 Fix Start Implementation button not updating UI and new tasks/prompts not appearing without refresh.

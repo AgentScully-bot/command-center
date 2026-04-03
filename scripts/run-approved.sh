@@ -428,11 +428,26 @@ $TEST_OUTPUT
     fi
 
     spawned=true
-    break  # Only spawn one agent at a time
+    break  # Only spawn one agent at a time (per loop iteration)
   fi
 done <<< "$features"
 
 if ! $spawned; then
   echo "No features had matching prompts. Write prompt files or use --use-generic."
   exit 1
+fi
+
+# --- Chain: re-check for more approved tasks after completion ---
+# Re-read TASKS.md (coder may have modified it) and loop if more approved work exists
+echo ""
+echo "=== Checking for next approved task... ==="
+remaining=$(extract_approved_features)
+if [[ -n "$remaining" ]]; then
+  echo "More approved tasks found — continuing chain:"
+  echo "$remaining" | head -5
+  echo ""
+  # Re-exec ourselves to pick up the next task (clean state, fresh TASKS.md read)
+  exec bash "$0" $([ "$USE_GENERIC" = true ] && echo "--use-generic")
+else
+  echo "No more approved tasks. Chain complete."
 fi
